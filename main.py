@@ -213,7 +213,7 @@ def view_response(response_id):
                          responses=responses,
                          categories=CATEGORIES)
 
-def main():
-    init_db()
-    app.run(debug=True)
-if __name__ == '__main__': main()
+# def main():
+init_db()
+#     app.run(debug=True)
+# if __name__ == '__main__': main()
