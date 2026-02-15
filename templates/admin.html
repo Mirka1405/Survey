@@ -1,0 +1,50 @@
+<!-- templates/admin.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Admin Dashboard</h1>
+
+<h2>Average Results (All Users)</h2>
+<div class="chart-container">
+    <img src="data:image/png;base64,{{ avg_chart_url }}" alt="Average Spider Chart">
+</div>
+
+<h2>Individual Responses</h2>
+{% if responses %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Timestamp</th>
+            <th>Name</th>
+            {% for category in categories %}
+            <th>{{ category }}</th>
+            {% endfor %}
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for response in responses %}
+        <tr>
+            <td>{{ response.id }}</td>
+            <td>{{ response.timestamp }}</td>
+            <td>{{ response.name }}</td>
+            <td>{{ response.q1 }}</td>
+            <td>{{ response.q2 }}</td>
+            <td>{{ response.q3 }}</td>
+            <td>{{ response.q4 }}</td>
+            <td>{{ response.q5 }}</td>
+            <td>{{ response.q6 }}</td>
+            <td>{{ response.q7 }}</td>
+            <td>{{ response.q8 }}</td>
+            <td>
+                <a href="{{ url_for('view_response', response_id=response.id) }}" class="btn btn-small">View</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No responses yet.</p>
+{% endif %}
+{% endblock %}

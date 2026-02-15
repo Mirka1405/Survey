@@ -1,0 +1,24 @@
+<!-- templates/results.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Thank You for Your Feedback!</h1>
+
+<div class="stats-box">
+    <h3>Your Responses:</h3>
+    <ul>
+        {% for i in range(categories|length) %}
+        <li><strong>{{ categories[i] }}:</strong> {{ responses[i] }}/10</li>
+        {% endfor %}
+    </ul>
+</div>
+
+<div class="chart-container">
+    <h2>Your Personal Results - Spider Chart</h2>
+    <img src="data:image/png;base64,{{ chart_url }}" alt="Spider Chart">
+</div>
+
+<p style="text-align: center; margin-top: 20px;">
+    <a href="{{ url_for('index') }}" class="btn">Take Survey Again</a>
+</p>
+{% endblock %}
