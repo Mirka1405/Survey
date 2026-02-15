@@ -18,13 +18,14 @@
         <h3>{{ categories[category_id] }}</h3>
         
         {% for question in questions %}
+        {% set question_index = loop.index0 %}
         <div class="question-item">
             <div class="question-text">{{ question }}</div>
             <div class="rating-scale">
                 {% for i in range(1, 11) %}
                 <div class="rating-option">
                     <input type="radio" 
-                           name="rating_{{ category_id }}_{{ loop.index0 }}" 
+                           name="rating_{{ category_id }}_{{ question_index }}" 
                            value="{{ i }}" 
                            {% if i == 5 %}checked{% endif %}
                            required>
