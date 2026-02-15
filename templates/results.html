@@ -2,23 +2,38 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Thank You for Your Feedback!</h1>
+<h1>Спасибо за прохождение теста!</h1>
 
-<div class="stats-box">
-    <h3>Your Responses:</h3>
-    <ul>
+<div class="stats-box" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
+    <h3>Роль: {{ role }}</h3>
+    
+    <h3>Оценки:</h3>
+    <ul style="list-style: none; padding: 0;">
         {% for i in range(categories|length) %}
-        <li><strong>{{ categories[i] }}:</strong> {{ responses[i] }}/10</li>
+        <li style="margin: 10px 0; padding: 10px; background: white; border-radius: 5px;">
+            <strong>{{ categories[i] }}:</strong> 
+            <span style="color: #667eea; font-weight: bold;">{{ values[i] }}/10</span>
+        </li>
         {% endfor %}
     </ul>
+    
+    {% if open_answers %}
+    <h3>Развернутые ответы:</h3>
+    {% for answer in open_answers %}
+    <div style="background: white; padding: 15px; margin: 10px 0; border-radius: 5px;">
+        <strong>{{ answer.question }}</strong>
+        <p style="margin-top: 10px; color: #666;">{{ answer.answer }}</p>
+    </div>
+    {% endfor %}
+    {% endif %}
 </div>
 
 <div class="chart-container">
-    <h2>Your Personal Results - Spider Chart</h2>
+    <h2>Ваши результаты</h2>
     <img src="data:image/png;base64,{{ chart_url }}" alt="Spider Chart">
 </div>
 
-<p style="text-align: center; margin-top: 20px;">
-    <a href="{{ url_for('index') }}" class="btn">Take Survey Again</a>
-</p>
+{% comment %} <div style="text-align: center; margin-top: 20px;">
+    <a href="{{ url_for('index') }}" class="btn">Take Another Survey</a>
+</div> {% endcomment %}
 {% endblock %}

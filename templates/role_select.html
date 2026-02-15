@@ -1,0 +1,18 @@
+<!-- templates/role_select.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Опрос</h1>
+<p style="text-align: center; color: #666; margin-bottom: 30px;">
+    Выберите вашу роль
+</p>
+
+<div class="role-cards">
+    {% for role_id, role_name in roles.items() %}
+    <a href="{{ url_for('survey', role=role_id) }}" class="role-card">
+        <h3>{{ role_name }}</h3>
+        <p>Нажмите, чтобы начать опрос {{ role_name }}</p>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

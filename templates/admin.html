@@ -4,23 +4,62 @@
 {% block content %}
 <h1>Admin Dashboard</h1>
 
-<h2>Average Results (All Users)</h2>
-<div class="chart-container">
-    <img src="data:image/png;base64,{{ avg_chart_url }}" alt="Average Spider Chart">
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_responses }}</div>
+        <div class="stat-label">Всего ответов</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_ratings }}</div>
+        <div class="stat-label">Всего оценок</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ "%.1f"|format(stats.overall_avg_rating or 0) }}</div>
+        <div class="stat-label">Средняя оценка</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_open_answers }}</div>
+        <div class="stat-label">Развернутые ответы</div>
+    </div>
 </div>
 
-<h2>Individual Responses</h2>
+<h2>Средние результаты</h2>
+<div class="chart-container">
+    <img src="data:image/png;base64,{{ overall_chart }}" alt="Overall Average Chart">
+</div>
+
+<h2>Результаты за каждую роль</h2>
+<div class="role-cards" style="margin-bottom: 30px;">
+    {% for role_id, role_data in role_charts.items() %}
+    <div class="role-card" onclick="toggleRoleChart('{{ role_id }}')" style="cursor: pointer;">
+        <h3>{{ role_data.display_name }}</h3>
+        <p>Смотреть результаты</p>
+    </div>
+    {% endfor %}
+</div>
+
+{% for role_id, role_data in role_charts.items() %}
+<div id="chart-{{ role_id }}" class="chart-container" style="display: none;">
+    <h3>{{ role_data.display_name }} - Средние результаты</h3>
+    <img src="data:image/png;base64,{{ role_data.chart_url }}" alt="{{ role_data.display_name }} Chart">
+    <p style="margin-top: 10px;">
+        <a href="{{ url_for('role_stats', role=role_id) }}" class="btn btn-small">Рассмотреть детально</a>
+    </p>
+</div>
+{% endfor %}
+
+<h2>Ответы</h2>
 {% if responses %}
 <table class="table">
     <thead>
         <tr>
             <th>ID</th>
-            <th>Timestamp</th>
-            <th>Name</th>
-            {% for category in categories %}
-            <th>{{ category }}</th>
-            {% endfor %}
-            <th>Action</th>
+            <th>Время</th>
+            <th>Имя</th>
+            <th>Роль</th>
+            <th>Оценка</th>
+            <th>Развернутый</th>
+            <th>...</th>
         </tr>
     </thead>
     <tbody>
@@ -28,23 +67,30 @@
         <tr>
             <td>{{ response.id }}</td>
             <td>{{ response.timestamp }}</td>
-            <td>{{ response.name }}</td>
-            <td>{{ response.q1 }}</td>
-            <td>{{ response.q2 }}</td>
-            <td>{{ response.q3 }}</td>
-            <td>{{ response.q4 }}</td>
-            <td>{{ response.q5 }}</td>
-            <td>{{ response.q6 }}</td>
-            <td>{{ response.q7 }}</td>
-            <td>{{ response.q8 }}</td>
+            <td>{{ response.respondent_name }}</td>
+            <td><span class="role-badge">{{ roles[response.role] }}</span></td>
+            <td>{{ response.rating_count }}</td>
+            <td>{{ response.open_count }}</td>
             <td>
-                <a href="{{ url_for('view_response', response_id=response.id) }}" class="btn btn-small">View</a>
+                <a href="{{ url_for('view_response', response_id=response.id) }}" 
+                   class="btn btn-small">Смотреть</a>
             </td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
 {% else %}
-<p>No responses yet.</p>
+<p style="text-align: center; color: #666; padding: 20px;">Нет ответов</p>
 {% endif %}
+
+<script>
+function toggleRoleChart(roleId) {
+    const chartDiv = document.getElementById('chart-' + roleId);
+    if (chartDiv.style.display === 'none') {
+        chartDiv.style.display = 'block';
+    } else {
+        chartDiv.style.display = 'none';
+    }
+}
+</script>
 {% endblock %}

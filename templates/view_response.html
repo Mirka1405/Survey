@@ -2,26 +2,50 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Individual Response Details</h1>
+<h1>Response Details</h1>
 
-<div class="stats-box">
+<div class="stats-box" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
     <p><strong>ID:</strong> {{ response.id }}</p>
-    <p><strong>Name:</strong> {{ response.name }}</p>
-    <p><strong>Timestamp:</strong> {{ response.timestamp }}</p>
-    
-    <h3>Responses:</h3>
-    <ul>
-        {% for i in range(categories|length) %}
-        <li><strong>{{ categories[i] }}:</strong> {{ responses[i] }}/10</li>
-        {% endfor %}
-    </ul>
+    <p><strong>Имя:</strong> {{ response.respondent_name }}</p>
+    <p><strong>Роль:</strong> <span class="role-badge">{{ role_display }}</span></p>
+    <p><strong>Время:</strong> {{ response.timestamp }}</p>
 </div>
 
 <div class="chart-container">
     <img src="data:image/png;base64,{{ chart_url }}" alt="Spider Chart">
 </div>
 
-<p style="text-align: center; margin-top: 20px;">
-    <a href="{{ url_for('admin') }}" class="btn">Back to Admin</a>
-</p>
+<h2>Подробно</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Категория</th>
+            <th>Вопрос</th>
+            <th>Оценка</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for rating in ratings %}
+        <tr>
+            <td>{{ rating.category }}</td>
+            <td>{{ rating.question }}</td>
+            <td><strong>{{ rating.rating }}/10</strong></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if open_answers %}
+<h2>Развернутые ответы</h2>
+{% for answer in open_answers %}
+<div class="open-question" style="background: white; padding: 20px; margin: 10px 0; border-radius: 8px; border: 1px solid #e0e0e0;">
+    <strong>{{ answer.question }}</strong>
+    <p style="margin-top: 10px; color: #666;">{{ answer.answer }}</p>
+</div>
+{% endfor %}
+{% endif %}
+
+<div style="text-align: center; margin-top: 20px;">
+    <a href="{{ url_for('admin') }}" class="btn">К админской странице</a>
+</div>
 {% endblock %}

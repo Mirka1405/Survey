@@ -1,0 +1,77 @@
+<!-- templates/role_stats.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{{ role_display }} Statistics</h1>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_responses }}</div>
+        <div class="stat-label">Total Responses</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ "%.1f"|format(stats.avg_rating or 0) }}</div>
+        <div class="stat-label">Average Rating</div>
+    </div>
+</div>
+
+<div class="chart-container">
+    <h2>Average Results - {{ role_display }}</h2>
+    <img src="data:image/png;base64,{{ chart_url }}" alt="{{ role_display }} Chart">
+</div>
+
+<h2>Category Averages</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Category</th>
+            <th>Average Rating</th>
+            <th>Number of Ratings</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cat in category_avgs %}
+        <tr>
+            <td>{{ cat.category }}</td>
+            <td>{{ "%.1f"|format(cat.avg_rating) }}/10</td>
+            <td>{{ cat.rating_count }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h2>Individual Responses ({{ role_display }})</h2>
+{% if responses %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Timestamp</th>
+            <th>Name</th>
+            <th>Ratings</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for response in responses %}
+        <tr>
+            <td>{{ response.id }}</td>
+            <td>{{ response.timestamp }}</td>
+            <td>{{ response.respondent_name }}</td>
+            <td>{{ response.rating_count }}</td>
+            <td>
+                <a href="{{ url_for('view_response', response_id=response.id) }}" 
+                   class="btn btn-small">View</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p style="text-align: center; color: #666; padding: 20px;">No responses for this role yet.</p>
+{% endif %}
+
+<div style="text-align: center; margin-top: 20px;">
+    <a href="{{ url_for('admin') }}" class="btn">Back to Admin</a>
+</div>
+{% endblock %}
