@@ -192,9 +192,11 @@ def survey(role):
     role_config = CONFIG[role]
     categories = CONFIG['categories']
     open_questions = CONFIG['open_questions']
+    roles = CONFIG['roles']
     
     return render_template('survey.html', 
                          role=role,
+                         roles=roles,
                          role_config=role_config,
                          categories=categories,
                          open_questions=open_questions)
