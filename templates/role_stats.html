@@ -2,31 +2,31 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>{{ role_display }} Statistics</h1>
+<h1>{{ role_display }}: статистика</h1>
 
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-value">{{ stats.total_responses }}</div>
-        <div class="stat-label">Total Responses</div>
+        <div class="stat-label">Всего ответов</div>
     </div>
     <div class="stat-card">
         <div class="stat-value">{{ "%.1f"|format(stats.avg_rating or 0) }}</div>
-        <div class="stat-label">Average Rating</div>
+        <div class="stat-label">Средние результаты</div>
     </div>
 </div>
 
 <div class="chart-container">
-    <h2>Average Results - {{ role_display }}</h2>
+    <h2>Средние результаты - {{ role_display }}</h2>
     <img src="data:image/png;base64,{{ chart_url }}" alt="{{ role_display }} Chart">
 </div>
 
-<h2>Category Averages</h2>
+<h2>Средние данные по категориям</h2>
 <table class="table">
     <thead>
         <tr>
-            <th>Category</th>
-            <th>Average Rating</th>
-            <th>Number of Ratings</th>
+            <th>Категория</th>
+            <th>Ср.знач.</th>
+            <th># ответов</th>
         </tr>
     </thead>
     <tbody>
@@ -40,16 +40,16 @@
     </tbody>
 </table>
 
-<h2>Individual Responses ({{ role_display }})</h2>
+<h2>Индивидуальные ответы: ({{ role_display }})</h2>
 {% if responses %}
 <table class="table">
     <thead>
         <tr>
             <th>ID</th>
-            <th>Timestamp</th>
-            <th>Name</th>
-            <th>Ratings</th>
-            <th>Action</th>
+            <th>Время</th>
+            <th>Имя</th>
+            <th>Оценка</th>
+            <th>...</th>
         </tr>
     </thead>
     <tbody>
@@ -72,6 +72,6 @@
 {% endif %}
 
 <div style="text-align: center; margin-top: 20px;">
-    <a href="{{ url_for('admin') }}" class="btn">Back to Admin</a>
+    <a href="{{ url_for('admin') }}" class="btn">Назад к консоли</a>
 </div>
 {% endblock %}

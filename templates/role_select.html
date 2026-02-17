@@ -9,7 +9,7 @@
 
 <div class="role-cards">
     {% for role_id, role_name in roles.items() %}
-    <a href="{{ url_for('survey', role=role_id) }}" class="role-card">
+    <a href="{{ url_for('survey', role=role_id) }}{{ append_t_id }}" class="role-card">
         <h3>{{ role_name }}</h3>
         <p>Нажмите, чтобы начать опрос {{ role_name }}</p>
     </a>

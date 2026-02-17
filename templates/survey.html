@@ -2,21 +2,25 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>{{ roles[role] }} Survey</h1>
+<h1>Опрос: {{ roles[role] }}</h1>
 
-<form action="{{ url_for('submit') }}" method="POST">
+<form action="{{ url_for('submit') }}{{ append_t_id }}" method="POST">
     <input type="hidden" name="role" value="{{ role }}">
     
     <div class="form-group">
-        <label for="respondent_name">Имя (необязательно):</label>
+        <label for="respondent_name">Имя: (обязательно)</label>
         <input type="text" id="respondent_name" name="respondent_name" 
-               placeholder="Имя">
+               placeholder="Имя" required>
+        <label for="member_amnt">Количество человек в команде:</label>
+        <input type="text" id="member_amnt" name="member_amnt" 
+               placeholder="Кол-во человек, с которыми вы работаете напрямую">
+        <label for="member_cost">Стоимость за человека:</label>
+        <input type="text" id="member_cost" name="member_cost" 
+               placeholder="Рублей за месяц за человека">
     </div>
-    
-    {% for category_id, questions in role_config.items() %}
+
     <div class="category-section">
-        <h3>{{ categories[category_id] }}</h3>
-        
+    {% for category_id, questions in role_config.items() %}
         {% for question in questions %}
         {% set question_index = loop.index0 %}
         <div class="question-item">
@@ -35,9 +39,9 @@
             </div>
         </div>
         {% endfor %}
-    </div>
     {% endfor %}
-    
+    </div>
+
     {% if open_questions %}
     <div class="category-section">
         <h3>Вопросы на развернутые ответы</h3>

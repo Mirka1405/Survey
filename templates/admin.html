@@ -2,7 +2,9 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Admin Dashboard</h1>
+<h1>Консоль</h1>
+
+<a href="{{ url_for('logout') }}" class="logout-btn">Выйти</a>
 
 <div class="stats-grid">
     <div class="stat-card">

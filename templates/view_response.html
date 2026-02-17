@@ -2,7 +2,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Response Details</h1>
+<h1>Ответ</h1>
 
 <div class="stats-box" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
     <p><strong>ID:</strong> {{ response.id }}</p>
@@ -46,6 +46,6 @@
 {% endif %}
 
 <div style="text-align: center; margin-top: 20px;">
-    <a href="{{ url_for('admin') }}" class="btn">К админской странице</a>
+    <a href="{{ url_for('admin') }}" class="btn">Назад к консоли</a>
 </div>
 {% endblock %}

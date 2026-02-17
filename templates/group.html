@@ -1,0 +1,9 @@
+<!-- templates/group.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Поделитесь этой ссылкой с вашей командой, чтобы отслеживать общие результаты</h1>
+<a href={{ link }} class="nav-links">{{ link }}</a>
+<h2>Чтобы смотреть результаты вашей команды, сохраните себе ссылку</h2>
+<a href={{ group_link }} class="nav-links">{{ group_link }}</a>
+{% endblock %}
