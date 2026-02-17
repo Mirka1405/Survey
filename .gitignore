@@ -1,3 +1,4 @@
 config.py
 *.db
 admins.json
+__pycache__/
