@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, json
+from flask import Flask, render_template, request, redirect, url_for, flash, session, json, jsonify
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
@@ -43,7 +43,9 @@ def init_db():
                   respondent_name TEXT,
                   member_cost REAL,
                   member_amnt INTEGER,
-                  team_id INTEGER)''')
+                  team_id INTEGER,
+                  mail TEXT,
+                  industry TEXT)''')
     
     # Create table for rating questions
     c.execute('''CREATE TABLE IF NOT EXISTS ratings
@@ -223,17 +225,19 @@ def submit():
     if request.method != 'POST': return
     role = request.form.get('role')
     respondent_name = request.form.get('respondent_name', 'Не указано')
+    respondent_mail = request.form.get('respondent_mail', None)
     member_amnt = request.form.get('member_amnt', None)
     member_cost = request.form.get('member_cost', None)
+    industry = request.form.get('industry', None)
     team_id = request.args.get("t")
     
     # Save main response
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('''INSERT INTO responses (timestamp, role, respondent_name, member_amnt, member_cost, team_id)
-                        VALUES (?, ?, ?, ?, ?, ?)''',
+    cursor.execute('''INSERT INTO responses (timestamp, role, respondent_name, member_amnt, member_cost, team_id, mail, industry)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
                     (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 
-                    role, respondent_name, member_amnt, member_cost, team_id))
+                    role, respondent_name, member_amnt, member_cost, team_id, respondent_mail, industry))
     response_id = cursor.lastrowid
     
     # Save ratings
@@ -280,6 +284,51 @@ def submit():
     
     flash('Спасибо за прохождение опроса!', 'success')
     return redirect(url_for('results'))
+
+@app.route('/spider', methods=['POST'])
+def spider():
+    """Generate spider chart from submitted answers and return as base64 image"""
+    data = request.get_json()
+    
+    if not data or 'role' not in data or 'ratings' not in data:
+        return jsonify({'error': 'Missing required data'}), 400
+    
+    role = data['role']
+    ratings = data['ratings']
+    
+    if role not in CONFIG:
+        return jsonify({'error': 'Invalid role'}), 400
+    
+    role_config = CONFIG[role]
+    
+    categories = []
+    values = []
+
+    category_values = {}
+    
+    for key, value in ratings.items():
+        parts = key.split('_')
+        if len(parts) >= 3:
+            category_id = parts[1]
+            if category_id not in category_values:
+                category_values[category_id] = []
+            category_values[category_id].append(value)
+    
+    for category_id, question_values in category_values.items():
+        if category_id in CONFIG['categories']:
+            category_name = CONFIG['categories'][category_id]
+            categories.append(category_name)
+            avg_value = sum(question_values) / len(question_values)
+            values.append(avg_value)
+    
+    role_display = CONFIG['roles'].get(role, role)
+    title = f"Предварительные результаты - {role_display}"
+    
+    chart_url = generate_spider_chart(values, categories, title)
+    
+    return jsonify({
+        'image': chart_url
+    })
 
 @app.route('/results')
 def results():

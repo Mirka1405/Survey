@@ -2,21 +2,33 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Опрос: {{ roles[role] }}</h1>
+<h1>Роль: {{ roles[role] }}</h1>
 
 <form action="{{ url_for('submit') }}{{ append_t_id }}" method="POST">
     <input type="hidden" name="role" value="{{ role }}">
     
     <div class="form-group">
-        <label for="respondent_name">Имя: (обязательно)</label>
-        <input type="text" id="respondent_name" name="respondent_name" 
-               placeholder="Имя" required>
         <label for="member_amnt">Количество человек в команде:</label>
-        <input type="text" id="member_amnt" name="member_amnt" 
+        <input type="number" id="member_amnt" name="member_amnt" 
                placeholder="Кол-во человек, с которыми вы работаете напрямую">
-        <label for="member_cost">Стоимость за человека:</label>
-        <input type="text" id="member_cost" name="member_cost" 
+        <label for="member_cost">Какова средняя стоимость человека в вашей команде (руб в мес)? (Мы сможем посчитать итоги в рублях, это необязательно, но удобно.)</label>
+        <input type="number" id="member_cost" name="member_cost" 
                placeholder="Рублей за месяц за человека">
+        <label for="industry">* Выберите индустрию:</label>
+        <select name="industry" id="industry" required>
+            <option value="">--Выберите--</option>
+            <option value="industrial">Промышленность и производство</option>
+            <option value="farming">Сельское и лесное хозяйство</option>
+            <option value="construction">Строительство и недвижимость</option>
+            <option value="trading">Торговля и услуги для населения</option>
+            <option value="finance">Финансы и страхование</option>
+            <option value="logistics">Транспорт и логистика</option>
+            <option value="it">IT и телекоммуникации</option>
+            <option value="government">Государственный сектор и социальная сфера</option>
+            <option value="services">Профессиональные и деловые услуги</option>
+            <option value="other">Другое</option>
+        </select>
+
     </div>
 
     <div class="category-section">
@@ -54,7 +66,68 @@
         {% endfor %}
     </div>
     {% endif %}
+
+    <button type="button" onclick="getSpider()">Посмотреть предварительные результаты</button>
     
+    <center>
+        <div id="spider-chart-container" style="margin: 20px 0; display: none;">
+            <h3>Предварительные результаты</h3>
+            <img id="spider-chart" src="" alt="Spider Chart" style="max-width: 600px;">
+        </div>
+    </center>
+
+    <div class="spacing"></div>
+    <h3>Введите имя и эл. почту, чтобы получить полные результаты:</h2>
+    
+    <div class="form-group">
+        <label for="respondent_name">* Имя:</label>
+        <input type="text" id="respondent_name" name="respondent_name" 
+                placeholder="Имя" required>
+        <label for="respondent_mail">* E-mail:</label>
+        <input type="email" id="respondent_mail" name="respondent_mail" 
+                placeholder="example@example.org" required>
+    </div>
     <button type="submit">Отправить</button>
+    <h6>* - обязательное поле</h6>
+    
+    <script>
+        function getSpider() {
+            const ratings = {};
+            const ratingInputs = document.querySelectorAll('input[type="radio"]:checked');
+            
+            ratingInputs.forEach(input => {
+                if (input.name.startsWith('rating_')) {
+                    ratings[input.name] = parseInt(input.value);
+                }
+            });
+            
+            fetch('/spider', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    role: document.querySelector('input[name="role"]').value,
+                    ratings: ratings
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const container = document.getElementById('spider-chart-container');
+                const img = document.getElementById('spider-chart');
+                img.src = 'data:image/png;base64,' + data.image;
+                container.style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ошибка при получении предварительных результатов');
+            });
+        }
+    </script>
 </form>
 {% endblock %}

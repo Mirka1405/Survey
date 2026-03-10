@@ -2,3 +2,4 @@ config.py
 *.db
 admins.json
 __pycache__/
+test.*
