@@ -8,10 +8,10 @@
     <input type="hidden" name="role" value="{{ role }}">
     
     <div class="form-group">
-        <label for="member_amnt">Количество человек в команде:</label>
+        <label for="member_amnt">Укажите количество членов команды:</label>
         <input type="number" id="member_amnt" name="member_amnt" 
                placeholder="Кол-во человек, с которыми вы работаете напрямую">
-        <label for="member_cost">Какова средняя стоимость человека в вашей команде (руб в мес)? (Мы сможем посчитать итоги в рублях, это необязательно, но удобно.)</label>
+        <label for="member_cost">Укажите среднюю стоимость сотрудника в вашей команде (руб в мес)? (Мы сможем посчитать итоги в рублях, это необязательно, но удобно.)</label>
         <input type="number" id="member_cost" name="member_cost" 
                placeholder="Рублей за месяц за человека">
         <label for="industry">* Выберите индустрию:</label>
@@ -56,7 +56,7 @@
 
     {% if open_questions %}
     <div class="category-section">
-        <h3>Вопросы на развернутые ответы</h3>
+        <!--<h3>Вопросы на развернутые ответы</h3>-->
         {% for question in open_questions %}
         <div class="open-question">
             <label>{{ question }}</label>
@@ -77,7 +77,7 @@
     </center>
 
     <div class="spacing"></div>
-    <h3>Введите имя и эл. почту, чтобы получить полные результаты:</h2>
+    <h3>Введите имя и электронную почту, чтобы получить полные результаты:</h2>
     
     <div class="form-group">
         <label for="respondent_name">* Имя:</label>
