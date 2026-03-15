@@ -45,7 +45,9 @@ def init_db():
                   member_amnt INTEGER,
                   team_id INTEGER,
                   mail TEXT,
-                  industry TEXT)''')
+                  industry TEXT,
+                  company TEXT,
+                  job TEXT)''')
     
     # Create table for rating questions
     c.execute('''CREATE TABLE IF NOT EXISTS ratings
@@ -75,6 +77,8 @@ def get_db_connection():
 
 def generate_spider_chart(values, categories, title):
     """Generate a spider/radar chart"""
+    TITLE_FORMAT = "{0}\nИндекс максимума команды - {1}/10"
+    CATEG_FORMAT = "{0} ({1}/10)"
     # Number of variables
     N = len(categories)
     
@@ -93,7 +97,7 @@ def generate_spider_chart(values, categories, title):
     ax.fill(angles, values, alpha=0.25, color='blue')
     
     # Set category labels
-    category_labels = [CONFIG['categories'].get(cat, cat) for cat in categories]
+    category_labels = [CATEG_FORMAT.format(CONFIG['categories'].get(cat, cat),f"{values[i]:.1f}") for i,cat in enumerate(categories)]
     ax.set_xticks(angles[:-1])
     ax.set_xticklabels(category_labels, size=10)
     
@@ -104,7 +108,7 @@ def generate_spider_chart(values, categories, title):
     ax.grid(True)
     
     # Add title
-    plt.title(title, size=15, y=1.1)
+    plt.title(TITLE_FORMAT.format(title,f"{sum(values)/len(values):.1f}"), size=15, y=1.1)
     
     # Save to BytesIO object
     img = BytesIO()
@@ -225,6 +229,8 @@ def submit():
     if request.method != 'POST': return
     role = request.form.get('role')
     respondent_name = request.form.get('respondent_name', 'Не указано')
+    respondent_company = request.form.get('respondent_company', 'Не указано')
+    respondent_job = request.form.get('respondent_job', 'Не указано')
     respondent_mail = request.form.get('respondent_mail', None)
     member_amnt = request.form.get('member_amnt', None)
     member_cost = request.form.get('member_cost', None)
@@ -234,10 +240,10 @@ def submit():
     # Save main response
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('''INSERT INTO responses (timestamp, role, respondent_name, member_amnt, member_cost, team_id, mail, industry)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+    cursor.execute('''INSERT INTO responses (timestamp, role, respondent_name, member_amnt, member_cost, team_id, mail, industry, company, job)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                     (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 
-                    role, respondent_name, member_amnt, member_cost, team_id, respondent_mail, industry))
+                    role, respondent_name, member_amnt, member_cost, team_id, respondent_mail, industry, respondent_company, respondent_job))
     response_id = cursor.lastrowid
     
     # Save ratings
