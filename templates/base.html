@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" sizes="32x32" href="{{ url_for('static', filename='light.svg') }}" media="(prefers-color-scheme: light)">
+    <link rel="icon" type="image/x-icon" sizes="32x32" href="{{ url_for('static', filename='dark.svg') }}">
     <title>Опросы</title>
     <style>
         * {
@@ -281,6 +283,11 @@
         .stat-card .stat-label {
             font-size: 1em;
             opacity: 0.9;
+        }
+
+        .label-inline {
+            display: initial;
+            font-size: initial;
         }
         
         .table {

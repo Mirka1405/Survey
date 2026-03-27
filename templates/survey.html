@@ -80,9 +80,9 @@
     <h3>Введите ваши данные, чтобы получить полные результаты и рекомендации:</h2>
     
     <div class="form-group">
-        <label for="respondent_name">* Имя:</label>
+        <label for="respondent_name">* ФИО:</label>
         <input type="text" id="respondent_name" name="respondent_name" 
-                placeholder="Имя" required>
+                placeholder="ФИО" required>
         <label for="respondent_company">* Компания:</label>
         <input type="text" id="respondent_company" name="respondent_company" 
                 placeholder="Компания" required>
@@ -92,6 +92,10 @@
         <label for="respondent_mail">* E-mail:</label>
         <input type="email" id="respondent_mail" name="respondent_mail" 
                 placeholder="example@example.org" required>
+    </div>
+    <div class="form-group">
+        <input type="checkbox" id="consent-data" name="consent-data" required>
+        <label for="consent-data" class="label-inline">* Даю согласие на обработку моих персональных данных</label>
     </div>
     <button type="submit">Отправить</button>
     <h6>* - обязательное поле</h6>
