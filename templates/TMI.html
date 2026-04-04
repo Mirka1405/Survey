@@ -1,4 +1,4 @@
-<!-- templates/role_select.html -->
+<!-- templates/TMI.html -->
 {% extends "base.html" %}
 
 {% block content %}
@@ -31,10 +31,10 @@
 </h1>
 
 <div class="role-cards">
-    {% for role_id, role_name in roles.items() %}
-    <a href="{{ url_for('survey', role=role_id) }}{{ append_t_id }}" class="role-card">
-        <h3>{{ role_name }}</h3>
-        <p>Нажмите, чтобы начать опрос {{ role_name }}</p>
+    {% for role_id, role_data in data["questions"].items() %}
+    <a href="{{ url_for('survey', role=role_id, name="TMI") }}{{ append_t_id }}" class="role-card">
+        <h3>{{ data["roles"][role_id] }}</h3>
+        <p>Нажмите, чтобы начать опрос {{ data["roles"][role_id] }}</p>
     </a>
     {% endfor %}
 </div>

@@ -1,0 +1,20 @@
+<!-- templates/homepage.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Опросы от компании LUDI</h1>
+<hr><br>
+
+<h1>
+    Выберите опрос
+</h1>
+
+<div class="role-cards">
+    {% for id, item in surveys.items() %}
+    <a href="{{ url_for('select', name=id) }}" class="role-card">
+        <h3>{{ item["name"] }}</h3>
+        <p>Опрос {{ item["name"] }}</p>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

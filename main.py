@@ -15,6 +15,7 @@ app = Flask(__name__)
 import config
 app.secret_key = config.SECRET_KEY
 users = None
+
 # Load survey configuration
 def load_config():
     with open('admins.json',"r") as f:
@@ -22,6 +23,7 @@ def load_config():
         users = {k:generate_password_hash(v) for k,v in json.load(f).items()}
     with open('config/survey_config.json', 'r', encoding='utf-8') as f:
         return json.load(f)
+
 auth = HTTPBasicAuth()
 CONFIG = load_config()
 
@@ -35,10 +37,11 @@ def init_db():
     conn = sqlite3.connect('survey.db')
     c = conn.cursor()
     
-    # Create main responses table
+    # Create main responses table with survey_id
     c.execute('''CREATE TABLE IF NOT EXISTS responses
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   timestamp TEXT,
+                  survey_id TEXT,
                   role TEXT,
                   respondent_name TEXT,
                   member_cost REAL,
@@ -49,7 +52,7 @@ def init_db():
                   company TEXT,
                   job TEXT)''')
     
-    # Create table for rating questions
+    # Create table for rating questions with survey_id
     c.execute('''CREATE TABLE IF NOT EXISTS ratings
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   response_id INTEGER,
@@ -59,7 +62,7 @@ def init_db():
                   rating INTEGER,
                   FOREIGN KEY (response_id) REFERENCES responses (id))''')
     
-    # Create table for open questions
+    # Create table for open questions with survey_id
     c.execute('''CREATE TABLE IF NOT EXISTS open_answers
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   response_id INTEGER,
@@ -75,10 +78,15 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-def generate_spider_chart(values, categories, title):
+def generate_spider_chart(name, values, categories, title):
     """Generate a spider/radar chart"""
-    TITLE_FORMAT = "{0}\nИндекс максимума команды - {1}/10"
-    CATEG_FORMAT = "{0} ({1}/10)"
+    TITLE_FORMAT = CONFIG[name]["chart_title"]
+    CATEG_FORMAT = CONFIG[name]["chart_categories"]
+
+    weights = {CONFIG[name]["categories"][c]:w for c,w in CONFIG[name]["category_weights"].items()} if "category_weights" in CONFIG[name].keys() else {c:1 for c in CONFIG[name]["categories"].values()}
+    w_avg = sum(weights.values())/len(weights.values())
+    # factor = weights[category]/w_avg
+    values_adj = [i*weights[c]/w_avg for i,c in zip(values,categories)]
     # Number of variables
     N = len(categories)
     
@@ -97,7 +105,7 @@ def generate_spider_chart(values, categories, title):
     ax.fill(angles, values, alpha=0.25, color='blue')
     
     # Set category labels
-    category_labels = [CATEG_FORMAT.format(CONFIG['categories'].get(cat, cat),f"{values[i]:.1f}") for i,cat in enumerate(categories)]
+    category_labels = [CATEG_FORMAT.format(CONFIG[name]['categories'].get(cat, cat),f"{values[i]:.1f}") for i,cat in enumerate(categories)]
     ax.set_xticks(angles[:-1])
     ax.set_xticklabels(category_labels, size=10)
     
@@ -108,7 +116,7 @@ def generate_spider_chart(values, categories, title):
     ax.grid(True)
     
     # Add title
-    plt.title(TITLE_FORMAT.format(title,f"{sum(values)/len(values):.1f}"), size=15, y=1.1)
+    plt.title(TITLE_FORMAT.format(title,f"{sum(values_adj)/len(values_adj):.1f}"), size=15, y=1.1)
     
     # Save to BytesIO object
     img = BytesIO()
@@ -120,7 +128,7 @@ def generate_spider_chart(values, categories, title):
     plot_url = base64.b64encode(img.getvalue()).decode()
     return plot_url
 
-def get_average_responses_by_role(role=None,t_id=None):
+def get_average_responses_by_role(name, role=None, t_id=None):
     """Calculate average responses, optionally filtered by role"""
     conn = get_db_connection()
     
@@ -129,17 +137,23 @@ def get_average_responses_by_role(role=None,t_id=None):
         query = f'''SELECT rt.category, AVG(rt.rating) as avg_rating
                    FROM ratings rt
                    LEFT JOIN responses r ON rt.response_id = r.id
-                   WHERE rt.role = ?{' AND r.team_id = ?' if t_id else ''}
+                   WHERE rt.survey_id = ? AND rt.role = ?{' AND r.team_id = ?' if t_id else ''}
                    GROUP BY rt.category'''
-        result = conn.execute(query, (role,t_id) if t_id else (role,)).fetchall()
+        params = [name, role]
+        if t_id:
+            params.append(t_id)
+        result = conn.execute(query, params).fetchall()
     else:
         # Get all ratings across all roles
         query = f'''SELECT rt.category, AVG(rt.rating) as avg_rating
                    FROM ratings rt
                    LEFT JOIN responses r ON rt.response_id = r.id
-                   {'WHERE r.team_id = ?' if t_id else ''}
+                   WHERE rt.survey_id = ?{' AND r.team_id = ?' if t_id else ''}
                    GROUP BY rt.category'''
-        result = conn.execute(query,(t_id,) if t_id else ()).fetchall()
+        params = [name]
+        if t_id:
+            params.append(t_id)
+        result = conn.execute(query, params).fetchall()
     
     conn.close()
     
@@ -148,17 +162,17 @@ def get_average_responses_by_role(role=None,t_id=None):
         return averages
     else:
         # Return default values if no data
-        return {cat: 5 for cat in CONFIG['categories'].keys()}
+        return {cat: 5 for cat in CONFIG[name]['categories'].keys()}
 
-def get_role_averages_for_chart(role=None,t_id=None):
+def get_role_averages_for_chart(name, role=None, t_id=None):
     """Get averages in format suitable for spider chart"""
-    averages = get_average_responses_by_role(role,t_id)
+    averages = get_average_responses_by_role(name, role, t_id)
     
     # Get categories for this role or all categories
-    if role and role in CONFIG:
-        categories = list(CONFIG[role].keys())
+    if role and role in CONFIG[name]['questions']:
+        categories = list(CONFIG[name]['questions'][role].keys())
     else:
-        categories = list(CONFIG['categories'].keys())
+        categories = list(CONFIG[name]['categories'].keys())
     
     # Create values in the same order as categories
     values = [averages.get(cat, 5) for cat in categories]
@@ -177,9 +191,12 @@ def get_user_responses_for_chart(response_id):
         conn.close()
         return None, None, None
     
+    name = response[2]
+    
     # Get ratings
     ratings = conn.execute('''SELECT category, rating FROM ratings 
-                              WHERE response_id = ?''', (response_id,)).fetchall()
+                              WHERE response_id = ?''', 
+                              (response_id,)).fetchall()
     
     conn.close()
     
@@ -187,46 +204,56 @@ def get_user_responses_for_chart(response_id):
     rating_dict = {row['category']: row['rating'] for row in ratings}
     
     # Get categories for this role
-    if response['role'] in CONFIG:
-        categories = list(CONFIG[response['role']].keys())
+    if response['role'] in CONFIG[name]['questions']:
+        categories = list(CONFIG[name]['questions'][response['role']].keys())
     else:
         categories = list(rating_dict.keys())
     
     values = [rating_dict.get(cat, 5) for cat in categories]
     
-    return response, categories, values
+    return response, categories, values, name
 
 @app.route('/')
 def index():
-    """Home page with role selection"""
-    return render_template('role_select.html', 
-                         roles=CONFIG['roles'],
-                         append_t_id=f"?t={request.args.get("t")}" if "t" in request.args.keys() else "")
-
-@app.route('/survey/<role>')
-def survey(role):
+    """Home page"""
+    return render_template('homepage.html',
+                         surveys=CONFIG)
+@app.route('/select/<name>') 
+def select(name):
+    session["survey_name"] = name
+    return render_template(CONFIG[name]["page"],
+                         data=CONFIG[name])
+@app.route('/survey/<name>/<role>')
+def survey(name,role):
     """Show survey form for selected role"""
-    if role not in CONFIG:
+    if role not in CONFIG[name]['roles']:
         flash('Invalid role selected', 'error')
         return redirect(url_for('index'))
     
-    role_config = CONFIG[role]
-    categories = CONFIG['categories']
-    open_questions = CONFIG['open_questions']
-    roles = CONFIG['roles']
+    role_config = CONFIG[name]['questions'][role]
+    categories = CONFIG[name]['categories']
+    open_questions = CONFIG[name]['open_questions']
+    roles = CONFIG[name]['roles']
     
-    return render_template('survey.html', 
+    session["survey_name"] = name
+    return render_template(CONFIG[name].get('survey_page', 'survey.html'),
+                         data=CONFIG[name],
                          role=role,
                          roles=roles,
                          role_config=role_config,
                          categories=categories,
                          open_questions=open_questions,
-                         append_t_id=f"?t={request.args.get("t")}" if request.args.get("t") else "")
+                         survey_name=CONFIG[name]['name'],
+                         append_t_id=f"?t={request.args.get('t')}" if request.args.get("t") else "")
 
-@app.route('/submit', methods=['POST'])
+@app.route('/submit/', methods=['POST'])
 def submit():
     """Handle survey submission"""
-    if request.method != 'POST': return
+    if request.method != 'POST': 
+        return redirect(url_for('index'))
+    
+    name = session["survey_name"]
+    
     role = request.form.get('role')
     respondent_name = request.form.get('respondent_name', 'Не указано')
     respondent_company = request.form.get('respondent_company', 'Не указано')
@@ -240,32 +267,35 @@ def submit():
     # Save main response
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('''INSERT INTO responses (timestamp, role, respondent_name, member_amnt, member_cost, team_id, mail, industry, company, job)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+    cursor.execute('''INSERT INTO responses (timestamp, survey_id, role, respondent_name, member_amnt, member_cost, team_id, mail, industry, company, job)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                     (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 
-                    role, respondent_name, member_amnt, member_cost, team_id, respondent_mail, industry, respondent_company, respondent_job))
+                    name, role, respondent_name, member_amnt, member_cost, team_id, respondent_mail, industry, respondent_company, respondent_job))
     response_id = cursor.lastrowid
     
-    # Save ratings
+    weights = CONFIG[name]["category_weights"] if "category_weights" in CONFIG[name].keys() else {c:1 for c in CONFIG[name]["categories"].keys()}
+    w_avg = sum(weights.values())/len(weights.values())
     for key, value in request.form.items():
         if key.startswith('rating_'):
-            # Parse key format: rating_category_question
             parts = key.split('_')
             if len(parts) >= 3:
                 category = parts[1]
                 question_idx = parts[2]
                 rating = int(value)
                 
-                # Get the actual question text from config
-                if role in CONFIG and category in CONFIG[role]:
-                    questions = CONFIG[role][category]
+                if role in CONFIG[name]['questions'] and category in CONFIG[name]['questions'][role]:
+                    questions = CONFIG[name]['questions'][role][category]
+                    if CONFIG[name]["question_response_type"]=="string":
+                        questions = list(questions.keys())
+                    
                     if int(question_idx) < len(questions):
                         question = questions[int(question_idx)]
                         
+                        factor = weights[category]/w_avg
                         cursor.execute('''INSERT INTO ratings 
                                         (response_id, role, category, question, rating)
                                         VALUES (?, ?, ?, ?, ?)''',
-                                        (response_id, role, category, question, rating))
+                                        (response_id, role, category, question, rating*factor))
     
     # Save open answers
     for key, value in request.form.items():
@@ -274,8 +304,8 @@ def submit():
             parts = key.split('_')
             if len(parts) >= 2:
                 question_idx = int(parts[1])
-                if question_idx < len(CONFIG['open_questions']):
-                    question = CONFIG['open_questions'][question_idx]
+                if question_idx < len(CONFIG[name]['open_questions']):
+                    question = CONFIG[name]['open_questions'][question_idx]
                     
                     cursor.execute('''INSERT INTO open_answers 
                                     (response_id, question, answer)
@@ -291,10 +321,12 @@ def submit():
     flash('Спасибо за прохождение опроса!', 'success')
     return redirect(url_for('results'))
 
-@app.route('/spider', methods=['POST'])
+@app.route('/spider/', methods=['POST'])
 def spider():
     """Generate spider chart from submitted answers and return as base64 image"""
     data = request.get_json()
+
+    name = session["survey_name"]
     
     if not data or 'role' not in data or 'ratings' not in data:
         return jsonify({'error': 'Missing required data'}), 400
@@ -302,10 +334,8 @@ def spider():
     role = data['role']
     ratings = data['ratings']
     
-    if role not in CONFIG:
+    if role not in CONFIG[name]['roles']:
         return jsonify({'error': 'Invalid role'}), 400
-    
-    role_config = CONFIG[role]
     
     categories = []
     values = []
@@ -321,42 +351,47 @@ def spider():
             category_values[category_id].append(value)
     
     for category_id, question_values in category_values.items():
-        if category_id in CONFIG['categories']:
-            category_name = CONFIG['categories'][category_id]
+        if category_id in CONFIG[name]['categories']:
+            category_name = CONFIG[name]['categories'][category_id]
             categories.append(category_name)
             avg_value = sum(question_values) / len(question_values)
             values.append(avg_value)
     
-    role_display = CONFIG['roles'].get(role, role)
+    role_display = CONFIG[name]['roles'].get(role, role)
     title = f"Предварительные результаты - {role_display}"
     
-    chart_url = generate_spider_chart(values, categories, title)
+    chart_url = generate_spider_chart(name, values, categories, title)
     
     return jsonify({
         'image': chart_url
     })
 
-@app.route('/results')
+@app.route('/results/')
 def results():
     """Show individual results with spider chart"""
     if 'last_response_id' not in session:
         return redirect(url_for('index'))
     
     response_id = session['last_response_id']
-    response, categories, values = get_user_responses_for_chart(response_id)
+    response, categories, values, name = get_user_responses_for_chart(response_id)
     
     if not response:
         flash('Response not found', 'error')
         return redirect(url_for('index'))
     
-    role_display = CONFIG['roles'].get(response['role'], response['role'])
+    role_display = CONFIG[name]['roles'].get(response['role'], response['role'])
     title = f"Ваши результаты - {response['respondent_name']} ({role_display})"
     
-    chart_url = generate_spider_chart(values, categories, title)
+    if categories[0] in CONFIG[name]["categories"]: # given keys rather than display names
+        categories = [CONFIG[name]["categories"][c] for c in categories]
+    weights = {CONFIG[name]["categories"][c]:w for c,w in CONFIG[name]["category_weights"].items()} if "category_weights" in CONFIG[name].keys() else {c:1 for c in CONFIG[name]["categories"].values()}
+    w_avg = sum(weights.values())/len(weights.values())
+    values_adj = [i/weights[c]*w_avg for i,c in zip(values,categories)]
+    chart_url = generate_spider_chart(name, values_adj, categories, title)
     
     # Get open answers
     conn = get_db_connection()
-    open_answers = conn.execute('''SELECT question, answer FROM open_answers 
+    open_answers = conn.execute('''SELECT question, answer FROM open_answers
                                    WHERE response_id = ?''', 
                                (response_id,)).fetchall()
     conn.close()
@@ -366,26 +401,30 @@ def results():
                          respondent_name=response['respondent_name'],
                          role=role_display,
                          categories=categories,
-                         values=values,
-                         open_answers=open_answers)
+                         values=values_adj,
+                         open_answers=open_answers,
+                         survey_name=CONFIG[name]['name'])
 
-@app.route('/admin')
+@app.route('/admin/')
 @auth.login_required
 def admin():
     """Admin page showing all responses and average charts"""
+    name = session["survey_name"]
     conn = get_db_connection()
     
-    # Get all responses
+    # Get all responses for this survey
     responses = conn.execute('''SELECT r.*, 
                                COUNT(DISTINCT rt.id) as rating_count,
                                COUNT(DISTINCT oa.id) as open_count
                                FROM responses r
                                LEFT JOIN ratings rt ON r.id = rt.response_id
                                LEFT JOIN open_answers oa ON r.id = oa.response_id
+                               WHERE r.survey_id = ?
                                GROUP BY r.id
-                               ORDER BY r.timestamp DESC''').fetchall()
+                               ORDER BY r.timestamp DESC''', 
+                               (name,)).fetchall()
     
-    # Get statistics
+    # Get statistics for this survey
     stats = conn.execute('''SELECT 
                            COUNT(DISTINCT r.id) as total_responses,
                            COUNT(DISTINCT rt.id) as total_ratings,
@@ -393,17 +432,18 @@ def admin():
                            AVG(rt.rating) as overall_avg_rating
                            FROM responses r
                            LEFT JOIN ratings rt ON r.id = rt.response_id
-                           LEFT JOIN open_answers oa ON r.id = oa.response_id''').fetchone()
-    
-    
+                           LEFT JOIN open_answers oa ON r.id = oa.response_id
+                           WHERE r.survey_id = ?''', 
+                           (name,)).fetchone()
     
     # Generate average charts for each role
     role_charts = {}
-    for role in CONFIG['roles'].keys():
-        categories, values = get_role_averages_for_chart(role)
+    for role in CONFIG[name]['roles'].keys():
+        categories, values = get_role_averages_for_chart(name, role)
         if values:
-            role_display = CONFIG['roles'][role]
+            role_display = CONFIG[name]['roles'][role]
             chart_url = generate_spider_chart(
+                name,
                 values, 
                 categories, 
                 f"Средние результаты - {role_display}"
@@ -416,15 +456,16 @@ def admin():
             }
     
     # Generate overall average chart
-    all_categories = list(CONFIG['categories'].keys())
+    all_categories = list(CONFIG[name]['categories'].keys())
     all_values = []
     for cat in all_categories:
-        avg = conn.execute('SELECT AVG(rating) as avg FROM ratings WHERE category = ?',
-                          (cat,)).fetchone()
+        avg = conn.execute('SELECT AVG(rating) as avg FROM ratings WHERE survey_id = ? AND category = ?',
+                          (name, cat)).fetchone()
         all_values.append(avg['avg'] if avg and avg['avg'] else 5)
     conn.close()
     
     overall_chart = generate_spider_chart(
+        name,
         all_values,
         all_categories,
         "Средний результат за все ответы"
@@ -435,7 +476,8 @@ def admin():
                          stats=stats,
                          role_charts=role_charts,
                          overall_chart=overall_chart,
-                         roles=CONFIG['roles'])
+                         roles=CONFIG[name]['roles'],
+                         survey_name=CONFIG[name]['name'])
 
 @app.route('/logout')
 def logout():
@@ -447,22 +489,24 @@ def logout():
 @app.route('/response/<int:response_id>')
 def view_response(response_id):
     """View individual response with spider chart"""
-    response, categories, values = get_user_responses_for_chart(response_id)
+    response, categories, values, name = get_user_responses_for_chart(response_id)
     
     if not response:
         flash('Response not found', 'error')
         return redirect(url_for('admin'))
     
-    role_display = CONFIG['roles'].get(response['role'], response['role'])
+    role_display = CONFIG[name]['roles'].get(response['role'], response['role'])
     title = f"Результаты {response['respondent_name']} - {role_display} ({response['timestamp']})"
     
-    chart_url = generate_spider_chart(values, categories, title)
+    chart_url = generate_spider_chart(name, values, categories, title)
     
     # Get ratings details
     conn = get_db_connection()
     ratings = conn.execute('''SELECT category, question, rating 
-                             FROM ratings WHERE response_id = ?
-                             ORDER BY category''', (response_id,)).fetchall()
+                             FROM ratings 
+                             WHERE response_id = ?
+                             ORDER BY category''', 
+                             (response_id,)).fetchall()
     
     # Get open answers
     open_answers = conn.execute('''SELECT question, answer FROM open_answers 
@@ -475,48 +519,52 @@ def view_response(response_id):
                          chart_url=chart_url,
                          ratings=ratings,
                          open_answers=open_answers,
-                         role_display=role_display)
+                         role_display=role_display,)
 
 @app.route('/role/<role>')
 def role_stats(role):
     """View statistics for a specific role"""
-    if role not in CONFIG['roles']:
+    name = session["survey_name"]
+    if role not in CONFIG[name]['roles']:
         flash('Invalid role', 'error')
         return redirect(url_for('admin'))
     
     conn = get_db_connection()
     
-    # Get responses for this role
+    # Get responses for this role and survey
     responses = conn.execute('''SELECT r.*, 
                                COUNT(DISTINCT rt.id) as rating_count
                                FROM responses r
-                               LEFT JOIN ratings rt ON r.id = rt.response_id
-                               WHERE r.role = ?
+                               LEFT JOIN ratings rt ON r.id = rt.response_id AND rt.survey_id = ?
+                               WHERE r.survey_id = ? AND r.role = ?
                                GROUP BY r.id
                                ORDER BY r.timestamp DESC''', 
-                           (role,)).fetchall()
+                           (name, name, role)).fetchall()
     
     # Get statistics for this role
     stats = conn.execute('''SELECT 
                            COUNT(DISTINCT r.id) as total_responses,
                            AVG(rt.rating) as avg_rating
                            FROM responses r
-                           LEFT JOIN ratings rt ON r.id = rt.response_id
-                           WHERE r.role = ?''', (role,)).fetchone()
+                           LEFT JOIN ratings rt ON r.id = rt.response_id AND rt.survey_id = ?
+                           WHERE r.survey_id = ? AND r.role = ?''', 
+                           (name, name, role)).fetchone()
     
     # Get category averages
     category_avgs = conn.execute('''SELECT category, AVG(rating) as avg_rating,
                                    COUNT(*) as rating_count
                                    FROM ratings 
-                                   WHERE role = ?
-                                   GROUP BY category''', (role,)).fetchall()
+                                   WHERE survey_id = ? AND role = ?
+                                   GROUP BY category''', 
+                                   (name, role)).fetchall()
     
     conn.close()
     
     # Generate spider chart for this role
-    categories, values = get_role_averages_for_chart(role)
-    role_display = CONFIG['roles'][role]
+    categories, values = get_role_averages_for_chart(name, role)
+    role_display = CONFIG[name]['roles'][role]
     chart_url = generate_spider_chart(
+        name,
         values, 
         categories, 
         f"Средние результаты - {role_display}"
@@ -530,26 +578,31 @@ def role_stats(role):
                          category_avgs=category_avgs,
                          chart_url=chart_url,
                          categories=categories,
-                         values=values)
+                         values=values,
+                         survey_name=CONFIG[name]['name'])
 
-@app.route('/group')
+@app.route('/group/')
 def group():
     """Get a group link"""
+    name = session["survey_name"]
+    if not name:
+        ... # TODO
     if (t_id:=request.args.get("t")):
         conn = get_db_connection()
         
-        # Get all responses
+        # Get all responses for this survey and team
         responses = conn.execute('''SELECT r.*, 
                                 COUNT(DISTINCT rt.id) as rating_count,
                                 COUNT(DISTINCT oa.id) as open_count
                                 FROM responses r
                                 LEFT JOIN ratings rt ON r.id = rt.response_id
                                 LEFT JOIN open_answers oa ON r.id = oa.response_id
-                                WHERE r.team_id = ?
+                                WHERE r.survey_id = ? AND r.team_id = ?
                                 GROUP BY r.id
-                                ORDER BY r.timestamp DESC''',(t_id,)).fetchall()
+                                ORDER BY r.timestamp DESC''',
+                                (name, t_id)).fetchall()
         
-        # Get statistics
+        # Get statistics for this survey and team
         stats = conn.execute('''SELECT 
                             COUNT(DISTINCT r.id) as total_responses,
                             COUNT(DISTINCT rt.id) as total_ratings,
@@ -558,15 +611,17 @@ def group():
                             FROM responses r
                             LEFT JOIN ratings rt ON r.id = rt.response_id
                             LEFT JOIN open_answers oa ON r.id = oa.response_id
-                            WHERE r.team_id = ?''',(t_id,)).fetchone()
+                            WHERE r.survey_id = ? AND r.team_id = ?''',
+                            (name, t_id)).fetchone()
         
         # Generate average charts for each role
         role_charts = {}
-        for role in CONFIG['roles'].keys():
-            categories, values = get_role_averages_for_chart(role,t_id)
+        for role in CONFIG[name]['roles'].keys():
+            categories, values = get_role_averages_for_chart(name, role, t_id)
             if values:
-                role_display = CONFIG['roles'][role]
+                role_display = CONFIG[name]['roles'][role]
                 chart_url = generate_spider_chart(
+                    name,
                     values, 
                     categories, 
                     f"Средние результаты - {role_display}"
@@ -579,14 +634,18 @@ def group():
                 }
         
         # Generate overall average chart
-        all_categories = list(CONFIG['categories'].keys())
+        all_categories = list(CONFIG[name]['categories'].keys())
         all_values = []
         for cat in all_categories:
-            avg = conn.execute('SELECT AVG(rating) as avg FROM ratings rt LEFT JOIN responses r on r.id = rt.response_id WHERE rt.category = ? AND r.team_id = ?',
-                            (cat,t_id)).fetchone()
+            avg = conn.execute('''SELECT AVG(rt.rating) as avg 
+                                 FROM ratings rt 
+                                 LEFT JOIN responses r on r.id = rt.response_id 
+                                 WHERE rt.survey_id = ? AND rt.category = ? AND r.team_id = ?''',
+                            (name, cat, t_id)).fetchone()
             all_values.append(avg['avg'] if avg and avg['avg'] else 5)
         conn.close()
         overall_chart = generate_spider_chart(
+            name,
             all_values,
             all_categories,
             "Средний результат за все ответы"
@@ -596,17 +655,21 @@ def group():
                          stats=stats,
                          role_charts=role_charts,
                          overall_chart=overall_chart,
-                         roles=CONFIG['roles'])
+                         roles=CONFIG[name]['roles'],
+                         survey_name=CONFIG[name]['name'])
 
     conn = get_db_connection()
-    t_id = conn.execute("SELECT MAX(team_id) FROM responses").fetchone()[0]
-    if t_id is None: t_id = -1
-    link = config.URL_START+url_for("index",t=t_id+1)
-    group_link = config.URL_START+url_for("group",t=t_id+1)
-    return render_template('group.html', link=link, group_link=group_link)
-
-
+    # Get max team_id for this survey only
+    t_id = conn.execute("SELECT MAX(team_id) FROM responses WHERE survey_id = ?", 
+                       (name,)).fetchone()[0]
+    if t_id is None: 
+        t_id = -1
+    link = config.URL_START + url_for("index", t=t_id+1)
+    group_link = config.URL_START + url_for("group", t=t_id+1)
+    conn.close()
+    return render_template('group.html', link=link, group_link=group_link, survey_name=CONFIG[name]['name'])
 
 init_db()
+
 if __name__ == "__main__":
     app.run(debug=True)

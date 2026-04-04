@@ -7,6 +7,7 @@
 <form action="{{ url_for('submit') }}{{ append_t_id }}" method="POST">
     <input type="hidden" name="role" value="{{ role }}">
     
+    {% if data.need_team_data %}
     <div class="form-group">
         <label for="member_amnt">Укажите количество членов команды:</label>
         <input type="number" id="member_amnt" name="member_amnt" 
@@ -28,31 +29,61 @@
             <option value="services">Профессиональные и деловые услуги</option>
             <option value="other">Другое</option>
         </select>
-
     </div>
+    {% endif %}
 
-    <div class="category-section">
-    {% for category_id, questions in role_config.items() %}
-        {% for question in questions %}
-        {% set question_index = loop.index0 %}
-        <div class="question-item">
-            <div class="question-text">{{ question }}</div>
-            <div class="rating-scale">
-                {% for i in range(1, 11) %}
-                <div class="rating-option">
-                    <input type="radio" 
-                           name="rating_{{ category_id }}_{{ question_index }}" 
-                           value="{{ i }}" 
-                           {% if i == 5 %}checked{% endif %}
-                           required>
-                    <label>{{ i }}</label>
+    {% if not data.question_response_type %}
+        <div class="category-section">
+        {% for category_id, questions in role_config.items() %}
+            {% if data.visible_categories %}
+            <h2>{{ categories[category_id] }}</h2>
+            {% endif %}
+            {% for question in questions %}
+            {% set question_index = loop.index0 %}
+            <div class="question-item">
+                <div class="question-text">{{ question }}</div>
+                <div class="rating-scale">
+                    {% for i in range(1, 11) %}
+                    <div class="rating-option">
+                        <input type="radio" 
+                            name="rating_{{ category_id }}_{{ question_index }}" 
+                            value="{{ i }}" 
+                            {% if i == 5 %}checked{% endif %}
+                            required>
+                        <label>{{ i }}</label>
+                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
             </div>
-        </div>
+            {% endfor %}
         {% endfor %}
-    {% endfor %}
-    </div>
+        </div>
+    {% elif data.question_response_type == "string" %}
+        <div class="category-section">
+        {% for category_id,questions in role_config.items() %}
+            {% if data.visible_categories %}
+            <h2>{{ categories[category_id] }}</h2>
+            {% endif %}
+            {% for question,answers in questions.items() %}
+            {% set question_index = loop.index0 %}
+            <div class="question-item">
+                <div class="question-text">{{ question }}</div>
+                <div class="rating-scale">
+                    {% for response,score in answers.items() %}
+                    <div class="rating-option">
+                        <input type="radio" 
+                            name="rating_{{ category_id }}_{{ question_index }}" 
+                            value="{{ score }}"
+                            required>
+                        <label>{{ response }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        {% endfor %}
+        </div>
+    {% endif %}
 
     {% if open_questions %}
     <div class="category-section">
@@ -111,7 +142,7 @@
                 }
             });
             
-            fetch('/spider', {
+            fetch('/spider/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
