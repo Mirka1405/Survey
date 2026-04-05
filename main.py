@@ -370,7 +370,7 @@ def spider():
             values.append(avg_value)
     
     role_display = CONFIG[name]['roles'].get(role, role)
-    title = CONFIG[name]['chart_name'].format(role_display) #f"Предварительные результаты - {role_display}"
+    title = CONFIG[name].get('chart_name',"Предварительные результаты - {0}").format(role_display) #f"Предварительные результаты - {role_display}"
     
     chart_url = generate_spider_chart(name, values, categories, title)
     
