@@ -98,7 +98,7 @@
   },
   "HRvaluation":{
     "max_score": 100,
-    "skip_role_selection": "HR",
+    "skip_role_selection": "CEO",
     "preamble": "HRvaluation",
     "name": "Бизнес-ценность HR (для CEO)",
     "page": "HRvaluation.html",
@@ -108,7 +108,7 @@
     "chart_categories": "{0} ({1}/100)",
     "visible_categories": true,
     "roles": {
-      "HR":"HR"
+      "CEO":"CEO"
     },
     "categories":{
       "Organisation": "Организационное развитие",
@@ -125,7 +125,7 @@
       "Analytics": 20
     },
     "questions": {
-      "HR": {
+      "CEO": {
         "Organisation": {
           "Насколько HR помогает выстроить структуру, которая ускоряет бизнес, а не тормозит его?": {
             "HR не влияет на структуру. Она сложилась сама и часто мешает быстро принимать решения.": 0,
