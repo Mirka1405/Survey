@@ -82,9 +82,9 @@
                     {% for response,score in answers.items() %}
                     <div class="rating-option">
                         <input type="radio" 
-                            name="rating_{{ category_id }}_{{ question_index }}" 
-                            value="{{ score }}"
-                            required>
+                        name="rating_{{ category_id }}_{{ question_index }}" 
+                        value="{{ score }}"
+                        required>
                         <label>{{ response }}</label>
                     </div>
                     {% endfor %}
