@@ -2,7 +2,17 @@
 {% extends "base.html" %}
 
 {% block content %}
+
+{% if not data.skip_role_selection %}
 <h1>Роль: {{ roles[role] }}</h1>
+{% endif %}
+
+{% if preamble %}
+<div class="container">
+{{ preamble|safe }}
+</div>
+<br>
+{% endif %}
 
 <form action="{{ url_for('submit') }}{{ append_t_id }}" method="POST">
     <input type="hidden" name="role" value="{{ role }}">
@@ -33,7 +43,7 @@
     {% endif %}
 
     {% if not data.question_response_type %}
-        <div class="category-section">
+        <div class="category-section" id="questions_container">
         {% for category_id, questions in role_config.items() %}
             {% if data.visible_categories %}
             <h2>{{ categories[category_id] }}</h2>
@@ -59,7 +69,7 @@
         {% endfor %}
         </div>
     {% elif data.question_response_type == "string" %}
-        <div class="category-section">
+        <div class="category-section" id="questions_container">
         {% for category_id,questions in role_config.items() %}
             {% if data.visible_categories %}
             <h2>{{ categories[category_id] }}</h2>
@@ -126,13 +136,32 @@
     </div>
     <div class="form-group">
         <input type="checkbox" id="consent-data" name="consent-data" required>
-        <label for="consent-data" class="label-inline">* Даю согласие на обработку моих персональных данных</label>
+        <label for="consent-data" class="label-inline">* Даю <a href={{ url_for('agreement') }}>согласие</a> на обработку моих персональных данных</label>
     </div>
     <button type="submit">Отправить</button>
     <h6>* - обязательное поле</h6>
     
     <script>
+        function check_filled_required(){
+            let allAreFilled = true;
+            document.getElementById("questions_container").querySelectorAll("[required]").forEach(function(i) {
+                if(!allAreFilled) return;
+                if(!i.value) allAreFilled = false;
+                if(i.type === "radio") {
+                    let radioValueCheck = false;
+                    document.getElementById("questions_container").querySelectorAll(`[name=${i.name}]`).forEach(function(r) {
+                        if(r.checked) radioValueCheck = true;
+                    })
+                    allAreFilled = radioValueCheck;
+                }
+            })
+            return allAreFilled
+        }
         function getSpider() {
+            if(!check_filled_required()){
+                alert("Заполните все поля, чтобы получить результаты");
+                return;
+            }
             const ratings = {};
             const ratingInputs = document.querySelectorAll('input[type="radio"]:checked');
             

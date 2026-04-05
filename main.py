@@ -110,9 +110,9 @@ def generate_spider_chart(name, values, categories, title):
     ax.set_xticklabels(category_labels, size=10)
     
     # Set y-axis limits
-    ax.set_ylim(0, 10)
-    ax.set_yticks(range(0, 11, 2))
-    ax.set_yticklabels(map(str, range(0, 11, 2)), size=8)
+    ax.set_ylim(0, CONFIG[name].get("max_score",10))
+    ax.set_yticks(range(0, CONFIG[name].get("max_score",10)+1, CONFIG[name].get("max_score",10)//5))
+    ax.set_yticklabels(map(str, range(0, CONFIG[name].get("max_score",10)+1, CONFIG[name].get("max_score",10)//5)), size=8)
     ax.grid(True)
     
     # Add title
@@ -218,9 +218,15 @@ def index():
     """Home page"""
     return render_template('homepage.html',
                          surveys=CONFIG)
+@app.route('/agreement')
+def agreement():
+    """Agreement page"""
+    return render_template('agreement.html')
 @app.route('/select/<name>') 
 def select(name):
     session["survey_name"] = name
+    if "skip_role_selection" in CONFIG[name]:
+        return redirect(f"/survey/{name}/{CONFIG[name]["skip_role_selection"]}")
     return render_template(CONFIG[name]["page"],
                          data=CONFIG[name])
 @app.route('/survey/<name>/<role>')
@@ -234,6 +240,11 @@ def survey(name,role):
     categories = CONFIG[name]['categories']
     open_questions = CONFIG[name]['open_questions']
     roles = CONFIG[name]['roles']
+    preamble=""
+
+    if 'preamble' in CONFIG[name]:
+        with open(f'templates/preambles/{CONFIG[name]['preamble']}.html',encoding="utf-8") as f:
+            preamble=f.read()
     
     session["survey_name"] = name
     return render_template(CONFIG[name].get('survey_page', 'survey.html'),
@@ -243,6 +254,7 @@ def survey(name,role):
                          role_config=role_config,
                          categories=categories,
                          open_questions=open_questions,
+                         preamble=preamble,
                          survey_name=CONFIG[name]['name'],
                          append_t_id=f"?t={request.args.get('t')}" if request.args.get("t") else "")
 
@@ -358,7 +370,7 @@ def spider():
             values.append(avg_value)
     
     role_display = CONFIG[name]['roles'].get(role, role)
-    title = f"Предварительные результаты - {role_display}"
+    title = CONFIG[name]['chart_name'].format(role_display) #f"Предварительные результаты - {role_display}"
     
     chart_url = generate_spider_chart(name, values, categories, title)
     
