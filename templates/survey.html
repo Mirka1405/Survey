@@ -78,9 +78,9 @@
             {% set question_index = loop.index0 %}
             <div class="question-item">
                 <div class="question-text">{{ question }}</div>
-                <div class="rating-scale">
+                <div>
                     {% for response,score in answers.items() %}
-                    <div class="rating-option">
+                    <div class="rating-option-string">
                         <input type="radio" 
                         name="rating_{{ category_id }}_{{ question_index }}" 
                         value="{{ score }}"

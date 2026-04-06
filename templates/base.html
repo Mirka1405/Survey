@@ -197,7 +197,7 @@
             gap: 5px;
             flex-wrap: wrap;
         }
-        
+
         .rating-option {
             flex: 1;
             text-align: center;
@@ -207,6 +207,20 @@
             margin: 5px auto;
             display: block;
             cursor: pointer;
+        }
+        
+        .rating-option-string {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .rating-option-string input[type="radio"] {
+            margin: 0;
+            width: auto;
+            height: auto;
+            flex-shrink: 0;
         }
 
         input[type=radio] {
@@ -219,6 +233,15 @@
             font-size: 14px;
             margin-top: 5px;
             color: #666;
+        }
+
+        .rating-option-string label {
+            font-size: 14px;
+            margin-top: 5px;
+            color: #666;
+            margin: 0;
+            font-weight: normal;
+            display: inline;
         }
         
         .open-question {
@@ -403,7 +426,7 @@
 <body>
     <div class="container">
         <div class="nav-links">
-            <a href="{{ url_for('index') }}">Консалтинговая компания LUDI</a>
+            <a href="{{ url_for('index') }}">Список опросов</a>
             <span class="logo">
                 <a href="https://ludi-cons.ru">О нас</a>
                 <img src="{{ url_for('static', filename='light.svg') }}" style="height: 2em">
