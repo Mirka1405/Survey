@@ -118,7 +118,11 @@
     </center>
 
     <div class="spacing"></div>
-    <h3>Введите ваши данные, чтобы получить полные результаты и рекомендации:</h2>
+    {% if not data.recommendation_text %}
+    <h3>Введите ваши данные, чтобы получить полные результаты и рекомендации:</h3>
+    {% else %}
+    {{ data.recommendation_text|safe}}
+    {% endif %}
     
     <div class="form-group">
         <label for="respondent_name">* ФИО:</label>
