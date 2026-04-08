@@ -58,7 +58,7 @@
                         <input type="radio" 
                             name="rating_{{ category_id }}_{{ question_index }}" 
                             value="{{ i }}" 
-                            {% if i == 5 %}checked{% endif %}
+                            {% if i == 1 %}checked{% endif %}
                             required>
                         <label>{{ i }}</label>
                     </div>
@@ -112,14 +112,14 @@
     
     <center>
         <div id="spider-chart-container" style="margin: 20px 0; display: none;">
-            <h3>Предварительные результаты</h3>
             <img id="spider-chart" src="" alt="Spider Chart" style="max-width: 70%;">
         </div>
     </center>
 
     <div class="spacing"></div>
     {% if not data.recommendation_text %}
-    <h3>Введите ваши данные, чтобы получить полные результаты и рекомендации:</h3>
+    <h3>Оставьте контакты для 30-минутного разбора результатов</h3>
+    <h4 style='margin-top: -20px'>На сессии обсудим ваш профиль по итогам диагностики и дадим рекомендации по следующим шагам.</h4><br>
     {% else %}
     {{ data.recommendation_text|safe}}
     {% endif %}

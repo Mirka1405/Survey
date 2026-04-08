@@ -1,3 +1,8 @@
+from email.mime.image import MIMEImage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import smtplib
+
 from flask import Flask, render_template, request, redirect, url_for, flash, session, json, jsonify
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -78,15 +83,57 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+def wrap_email_html(content):
+    return content.replace("\n","<br>")
+def send_by_email(subject,text,image):
+    """Send the collected answers via email"""
+    msg = MIMEMultipart()
+    msg['Subject'] = subject
+    msg['From'] = config.EMAIL["sender_email"]
+    msg['To'] = config.EMAIL_TARGET
+    msg.attach(MIMEText(wrap_email_html(text)+f"<img src='data:image/png;base64,{image}'>","html"))
+    try:
+        with smtplib.SMTP_SSL(config.EMAIL['smtp_server'], config.EMAIL['smtp_port']) as server:
+            server.login(config.EMAIL['sender_email'], config.EMAIL["email_key"])
+            server.send_message(msg)
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
 def generate_spider_chart(name, values, categories, title):
     """Generate a spider/radar chart"""
     TITLE_FORMAT = CONFIG[name]["chart_title"]
     CATEG_FORMAT = CONFIG[name]["chart_categories"]
 
-    weights = {CONFIG[name]["categories"][c]:w for c,w in CONFIG[name]["category_weights"].items()} if "category_weights" in CONFIG[name].keys() else {c:1 for c in CONFIG[name]["categories"].values()}
-    w_avg = sum(weights.values())/len(weights.values())
-    # factor = weights[category]/w_avg
-    values_adj = [i*weights[c]/w_avg for i,c in zip(values,categories)]
+    TYPE = CONFIG[name].get("chart_type","spider")
+    values_adj=None
+    if "category_weights" in CONFIG[name].keys():
+        weights = {CONFIG[name]["categories"][c]:w for c,w in CONFIG[name]["category_weights"].items()}
+        w_avg = sum(weights.values())/len(weights.values())
+        # factor = weights[category]/w_avg
+        values_adj = [i*weights[c]/w_avg for i,c in zip(values,categories)]
+    else: values_adj = values
+
+    if TYPE == "pie":
+        colors = ['#ff9999', '#66b3ff', '#99ff99', '#ffcc99', '#ff99cc']
+
+        plt.figure(figsize=(10, 8))
+        plt.pie(values_adj,
+                labels=categories,
+                colors=colors,
+                autopct='%1.1f%%',
+                textprops={'fontsize': 18},
+                startangle=90,
+                shadow=True)
+
+        plt.title(TITLE_FORMAT.format(title,f"{sum(values_adj)/len(values_adj):.1f}"), size=26, y=1.1)
+        plt.axis('equal')
+        img = BytesIO()
+        plt.savefig(img, format='png', dpi=100, bbox_inches='tight')
+        img.seek(0)
+        plt.close()
+        plot_url = base64.b64encode(img.getvalue()).decode()
+        return plot_url
+
     # Number of variables
     N = len(categories)
     
@@ -183,7 +230,6 @@ def get_user_responses_for_chart(response_id):
     """Get a specific user's responses for spider chart"""
     conn = get_db_connection()
     
-    # Get response details
     response = conn.execute('SELECT * FROM responses WHERE id = ?', 
                            (response_id,)).fetchone()
     
@@ -191,19 +237,16 @@ def get_user_responses_for_chart(response_id):
         conn.close()
         return None, None, None
     
-    name = response[2]
+    name = response["survey_id"]
     
-    # Get ratings
     ratings = conn.execute('''SELECT category, rating FROM ratings 
                               WHERE response_id = ?''', 
                               (response_id,)).fetchall()
     
     conn.close()
     
-    # Organize ratings by category
     rating_dict = {row['category']: row['rating'] for row in ratings}
     
-    # Get categories for this role
     if response['role'] in CONFIG[name]['questions']:
         categories = list(CONFIG[name]['questions'][response['role']].keys())
     else:
@@ -275,6 +318,8 @@ def submit():
     member_cost = request.form.get('member_cost', None)
     industry = request.form.get('industry', None)
     team_id = request.args.get("t")
+
+    session["respondent_contacts"] = [respondent_name,respondent_company,respondent_job,respondent_mail]
     
     # Save main response
     conn = get_db_connection()
@@ -297,7 +342,7 @@ def submit():
                 
                 if role in CONFIG[name]['questions'] and category in CONFIG[name]['questions'][role]:
                     questions = CONFIG[name]['questions'][role][category]
-                    if CONFIG[name]["question_response_type"]=="string":
+                    if CONFIG[name].get("question_response_type","int")=="string":
                         questions = list(questions.keys())
                     
                     if int(question_idx) < len(questions):
@@ -408,6 +453,12 @@ def results():
                                (response_id,)).fetchall()
     conn.close()
     
+    text = """Имя: {0}
+Компания: {1}
+Должность: {2}
+Почта: {3}""".format(*session["respondent_contacts"])
+    send_by_email(f"Результаты {CONFIG[name]['name']}: {response['respondent_name']}",text,chart_url)
+
     return render_template('results.html', 
                          chart_url=chart_url,
                          respondent_name=response['respondent_name'],
