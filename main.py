@@ -122,12 +122,11 @@ def generate_spider_chart(name, values, categories, title):
                 colors=colors,
                 autopct='%1.0f%%',
                 textprops={'fontsize': 18},
-                startangle=90,
-                shadow=True)
+                startangle=90)
 
         s=sum(values)
         legends = [f"{i}: {round(j/s*100)}%" for i,j in zip(categories,values)]
-        plt.legend(legends, loc="lower center",bbox_to_anchor=(0.5,-0.5),fontsize=18)
+        plt.legend(legends, loc="lower center",bbox_to_anchor=(0.5,-0.3),fontsize=18)
         plt.title(TITLE_FORMAT.format(title,f"{sum(values_adj)/len(values_adj):.1f}"), size=26, y=1.1)
         plt.axis('equal')
         img = BytesIO()
