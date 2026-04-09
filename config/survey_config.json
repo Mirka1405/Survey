@@ -270,21 +270,26 @@
     "preamble": "HRroles",
     "name": "Роли зрелого HR: кто ты бизнесу?",
     "recommendation_text": "<h3>Оставьте контакты для 30-минутного разбора результатов</h3><h4 style='margin-top: -20px'>На сессии обсудим ваш профиль по итогам диагностики, его сбалансированность, слабые места и перекосы.</h4><br>",
-    "chart_title": "{0}\nУровень зрелости - {1}/10",
-    "chart_name": "Роли зрелого HR: кто ты бизнесу?",
+    "chart_title": "{0}",
+    "chart_name": "Ваш профиль ролей HR: кто ты бизнесу",
     "relative_scores": true,
     "chart_categories": "{0}",
-    "chart_type": "pie",
+    "chart_type": "bar",
+    "not_require_name": true,
+    "not_require_mail": true,
+    "not_require_job": true,
+    "min_score":0,
+    "max_score":7,
     "visible_categories": true,
     "roles": {
       "HR":"HR"
     },
     "categories":{
-      "Strategy": "HR как стратегический партнёр бизнеса",
-      "Organisation": "HR как архитектор организационной системы",
-      "Productivity": "HR как драйвер производительности",
-      "Environment": "HR как создатель устойчивой среды",
-      "Technology": "HR как оркестратор технологий и данных о людях"
+      "Strategy": "Стратегический партнёр бизнеса",
+      "Organisation": "Архитектор организационной системы",
+      "Productivity": "Драйвер производительности",
+      "Environment": "Создатель устойчивой среды",
+      "Technology": "Оркестратор технологий и данных о людях"
     },
     "questions": {
       "HR":{

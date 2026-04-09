@@ -53,12 +53,11 @@
             <div class="question-item">
                 <div class="question-text">{{ question }}</div>
                 <div class="rating-scale">
-                    {% for i in range(1, 11) %}
+                    {% for i in range(score_min, score_max+1) %}
                     <div class="rating-option">
                         <input type="radio" 
                             name="rating_{{ category_id }}_{{ question_index }}" 
                             value="{{ i }}" 
-                            {% if i == 1 %}checked{% endif %}
                             required>
                         <label>{{ i }}</label>
                     </div>
@@ -125,18 +124,18 @@
     {% endif %}
     
     <div class="form-group">
-        <label for="respondent_name">* ФИО:</label>
-        <input type="text" id="respondent_name" name="respondent_name" 
-                placeholder="ФИО" required>
         <label for="respondent_company">* Компания:</label>
         <input type="text" id="respondent_company" name="respondent_company" 
                 placeholder="Компания" required>
-        <label for="respondent_job">* Должность:</label>
+        <label for="respondent_name">{% if data.not_require_name %}*{%endif%} ФИО:</label>
+        <input type="text" id="respondent_name" name="respondent_name" 
+                placeholder="ФИО" {% if data.not_require_name %}required{%endif%}>
+        <label for="respondent_job">{% if data.not_require_job %}*{%endif%} Должность:</label>
         <input type="text" id="respondent_job" name="respondent_job" 
-                placeholder="Должность" required>
-        <label for="respondent_mail">* E-mail:</label>
+                placeholder="Должность" {% if data.not_require_job %}required{%endif%}>
+        <label for="respondent_mail">{% if data.not_require_mail %}*{%endif%} E-mail:</label>
         <input type="email" id="respondent_mail" name="respondent_mail" 
-                placeholder="example@example.org" required>
+                placeholder="example@example.org" {% if data.not_require_mail %}required{%endif%}>
     </div>
     <div class="form-group">
         <input type="checkbox" id="consent-data" name="consent-data" required>
@@ -201,6 +200,13 @@
                 console.error('Error:', error);
                 alert('Ошибка при получении предварительных результатов');
             });
+        }
+        function debugFill(){
+            document.getElementById("questions_container").querySelectorAll("[required]").forEach(function(i) {
+                if(i.type === "radio") {
+                    document.getElementById("questions_container").querySelector(`[name=${i.name}]`).checked = true
+                }
+            })
         }
     </script>
 </form>

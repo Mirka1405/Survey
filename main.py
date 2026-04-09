@@ -113,6 +113,22 @@ def generate_spider_chart(name, values, categories, title):
         values_adj = [i*weights[c]/w_avg for i,c in zip(values,categories)]
     else: values_adj = values
 
+    if TYPE == "bar":
+        fig, ax = plt.subplots()
+        colors = ['#ff9999', '#66b3ff', '#99ff99', '#ffcc99', '#ff99cc']
+        bars = ax.bar(categories, values_adj, color=colors)
+        ax.bar_label(bars,[round(i,1) if i else "" for i in values_adj],label_type='center')
+
+        plt.xticks(rotation=20, ha='right')
+        ax.set_ylim(CONFIG[name].get("min_score",0), CONFIG[name].get("max_score",10))
+
+        plt.title(TITLE_FORMAT.format(title,f"{sum(values_adj)/len(values_adj):.1f}"), size=20, y=1.1)
+        img = BytesIO()
+        plt.savefig(img, format='png', dpi=100, bbox_inches='tight')
+        img.seek(0)
+        plt.close()
+        plot_url = base64.b64encode(img.getvalue()).decode()
+        return plot_url
     if TYPE == "pie":
         colors = ['#ff9999', '#66b3ff', '#99ff99', '#ffcc99', '#ff99cc']
 
@@ -123,6 +139,7 @@ def generate_spider_chart(name, values, categories, title):
                 autopct='%1.0f%%',
                 textprops={'fontsize': 18},
                 startangle=90)
+        fig.set_ylim(CONFIG[name].get("min_score",0), CONFIG[name].get("max_score",10))
 
         s=sum(values)
         legends = [f"{i}: {round(j/s*100)}%" for i,j in zip(categories,values)]
@@ -159,9 +176,9 @@ def generate_spider_chart(name, values, categories, title):
     ax.set_xticklabels(category_labels, size=10)
     
     # Set y-axis limits
-    ax.set_ylim(0, CONFIG[name].get("max_score",10))
-    ax.set_yticks(range(0, CONFIG[name].get("max_score",10)+1, CONFIG[name].get("max_score",10)//5))
-    ax.set_yticklabels(map(str, range(0, CONFIG[name].get("max_score",10)+1, CONFIG[name].get("max_score",10)//5)), size=8)
+    ax.set_ylim(CONFIG[name].get("min_score",0), CONFIG[name].get("max_score",10))
+    ax.set_yticks(range(CONFIG[name].get("min_score",0), CONFIG[name].get("max_score",10)+1, CONFIG[name].get("max_score",10)//5))
+    ax.set_yticklabels(map(str, range(CONFIG[name].get("min_score",0), CONFIG[name].get("max_score",10)+1, CONFIG[name].get("max_score",10)//5)), size=8)
     ax.grid(True)
     
     # Add title
@@ -301,6 +318,8 @@ def survey(name,role):
                          open_questions=open_questions,
                          preamble=preamble,
                          survey_name=CONFIG[name]['name'],
+                         score_min=CONFIG[name].get("min_score",1),
+                         score_max=CONFIG[name].get("max_score",10),
                          append_t_id=f"?t={request.args.get('t')}" if request.args.get("t") else "")
 
 @app.route('/submit/', methods=['POST'])
