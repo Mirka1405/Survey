@@ -117,7 +117,7 @@ def generate_spider_chart(name, values, categories, title):
         fig, ax = plt.subplots()
         colors = ['#ff9999', '#66b3ff', '#99ff99', '#ffcc99', '#ff99cc']
         bars = ax.bar([i+1 for i in range(len(categories))], values_adj, color=colors, label=[f"{i+1}. {v}" for i,v in enumerate(categories)])
-        ax.legend(loc="lower center",bbox_to_anchor=(0.5,-0.5),fontsize=12)
+        ax.legend(loc="lower center",bbox_to_anchor=(0.5,-0.5),fontsize=12,frameon=False)
         ax.bar_label(bars,[round(i,1) if i else "" for i in values_adj],label_type='center')
 
         # plt.xticks(rotation=20, ha='right', fontsize=14)
@@ -322,6 +322,9 @@ def survey(name,role):
                          categories=categories,
                          open_questions=open_questions,
                          preamble=preamble,
+                         require_name=CONFIG[name].get("require_name",True),
+                         require_job=CONFIG[name].get("require_job",True),
+                         require_mail=CONFIG[name].get("require_mail",True),
                          survey_name=CONFIG[name]['name'],
                          score_min=CONFIG[name].get("min_score",1),
                          score_max=CONFIG[name].get("max_score",10),
