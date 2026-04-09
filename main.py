@@ -4,6 +4,7 @@ from email.mime.text import MIMEText
 import smtplib
 
 from flask import Flask, render_template, request, redirect, url_for, flash, session, json, jsonify
+from flask_sslify import SSLify
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
@@ -17,6 +18,7 @@ import base64
 from io import BytesIO
 import json
 app = Flask(__name__)
+sslify = SSLify(app)
 import config
 app.secret_key = config.SECRET_KEY
 users = None
