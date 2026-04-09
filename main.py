@@ -116,10 +116,11 @@ def generate_spider_chart(name, values, categories, title):
     if TYPE == "bar":
         fig, ax = plt.subplots()
         colors = ['#ff9999', '#66b3ff', '#99ff99', '#ffcc99', '#ff99cc']
-        bars = ax.bar(categories, values_adj, color=colors)
+        bars = ax.bar([i+1 for i in range(len(categories))], values_adj, color=colors, label=[f"{i+1}. {v}" for i,v in enumerate(categories)])
+        ax.legend(loc="lower center",bbox_to_anchor=(0.5,-0.5),fontsize=12)
         ax.bar_label(bars,[round(i,1) if i else "" for i in values_adj],label_type='center')
 
-        plt.xticks(rotation=20, ha='right', fontsize=14)
+        # plt.xticks(rotation=20, ha='right', fontsize=14)
         ax.set_ylim(CONFIG[name].get("min_score",0), CONFIG[name].get("max_score",10))
 
         plt.title(TITLE_FORMAT.format(title,f"{sum(values_adj)/len(values_adj):.1f}"), size=20, y=1.1)
