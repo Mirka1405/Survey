@@ -119,10 +119,14 @@ def generate_spider_chart(name, values, categories, title):
         bars = ax.bar(categories, values_adj, color=colors)
         ax.bar_label(bars,[round(i,1) if i else "" for i in values_adj],label_type='center')
 
-        plt.xticks(rotation=20, ha='right')
+        plt.xticks(rotation=20, ha='right', fontsize=14)
         ax.set_ylim(CONFIG[name].get("min_score",0), CONFIG[name].get("max_score",10))
 
         plt.title(TITLE_FORMAT.format(title,f"{sum(values_adj)/len(values_adj):.1f}"), size=20, y=1.1)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.yaxis.set_visible(False)
         img = BytesIO()
         plt.savefig(img, format='png', dpi=100, bbox_inches='tight')
         img.seek(0)
