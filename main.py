@@ -265,22 +265,26 @@ def get_user_responses_for_chart(response_id):
     
     name = response["survey_id"]
     
-    ratings = conn.execute('''SELECT category, rating FROM ratings 
+    ratings = conn.execute('''SELECT category,AVG(rating) FROM ratings 
+                              WHERE response_id = ?
+                              GROUP BY category''', 
+                              (response_id,)).fetchall()
+    answers = conn.execute('''SELECT category,question,rating FROM ratings 
                               WHERE response_id = ?''', 
                               (response_id,)).fetchall()
-    
     conn.close()
     
-    rating_dict = {row['category']: row['rating'] for row in ratings}
+    rating_dict = {row['category']: row['AVG(rating)'] for row in ratings}
+    answer_dict = {row['question']: {"rate":row['rating'],"cat":row['category']} for row in answers}
     
     if response['role'] in CONFIG[name]['questions']:
         categories = list(CONFIG[name]['questions'][response['role']].keys())
     else:
         categories = list(rating_dict.keys())
     
-    values = [rating_dict.get(cat, 5) for cat in categories]
+    values = [rating_dict[cat] for cat in categories]
     
-    return response, categories, values, name
+    return response, categories, values, name, answer_dict
 
 @app.route('/')
 def index():
@@ -461,14 +465,14 @@ def results():
         return redirect(url_for('index'))
     
     response_id = session['last_response_id']
-    response, categories, values, name = get_user_responses_for_chart(response_id)
+    response, categories, values, name, answer_dict = get_user_responses_for_chart(response_id)
     
     if not response:
         flash('Response not found', 'error')
         return redirect(url_for('index'))
     
     role_display = CONFIG[name]['roles'].get(response['role'], response['role'])
-    title = f"Ваши результаты - {response['respondent_name']} ({role_display})"
+    title = CONFIG[name].get('chart_name',"Ваши результаты - ({0})").format(role_display)
     
     if categories[0] in CONFIG[name]["categories"]: # given keys rather than display names
         categories = [CONFIG[name]["categories"][c] for c in categories]
@@ -483,14 +487,25 @@ def results():
                                    WHERE response_id = ?''', 
                                (response_id,)).fetchall()
     conn.close()
+
+    values_adj = [round(i,1) for i in values_adj]
     
     text = """Имя: {0}
 Компания: {1}
 Должность: {2}
-Почта: {3}""".format(*session["respondent_contacts"])
+Почта: {3}
+
+Развернутые ответы, если есть:
+{4}
+
+Числовые ответы:
+{5}""".format(*session["respondent_contacts"],"\n".join([f"{i.question}: {i.answer}" for i in open_answers]),
+              "\n\n".join(f"{CONFIG[name]["categories"][v['cat']]} - {i}: {v['rate']}" for i,v in answer_dict.items()))
+    
     send_by_email(f"Результаты {CONFIG[name]['name']}: {response['respondent_name']}",text,chart_url)
 
     return render_template('results.html', 
+                         score_max=CONFIG[name].get("max_score",10),
                          chart_url=chart_url,
                          respondent_name=response['respondent_name'],
                          role=role_display,
@@ -583,7 +598,7 @@ def logout():
 @app.route('/response/<int:response_id>')
 def view_response(response_id):
     """View individual response with spider chart"""
-    response, categories, values, name = get_user_responses_for_chart(response_id)
+    response, categories, values, name, answer_dict = get_user_responses_for_chart(response_id)
     
     if not response:
         flash('Response not found', 'error')

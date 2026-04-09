@@ -12,7 +12,7 @@
         {% for i in range(categories|length) %}
         <li style="margin: 10px 0; padding: 10px; background: white; border-radius: 5px;">
             <strong>{{ categories[i] }}:</strong> 
-            <span style="color: #667eea; font-weight: bold;">{{ values[i] }}/10</span>
+            <span style="color: #667eea; font-weight: bold;">{{ values[i] }}/{{score_max}}</span>
         </li>
         {% endfor %}
     </ul>
