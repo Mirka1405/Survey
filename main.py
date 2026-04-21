@@ -85,15 +85,26 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-def wrap_email_html(content):
-    return content.replace("\n","<br>")
-def send_by_email(subject,text,image):
+def send_by_email(subject,text,image:BytesIO,is_plaintext=True,target=config.EMAIL_TARGET):
     """Send the collected answers via email"""
     msg = MIMEMultipart()
     msg['Subject'] = subject
     msg['From'] = config.EMAIL["sender_email"]
-    msg['To'] = config.EMAIL_TARGET
-    msg.attach(MIMEText(wrap_email_html(text)+f"<img src='data:image/png;base64,{image}'>","html"))
+    msg['To'] = target
+    if is_plaintext:
+        msg.attach(MIMEText(text,"plain"))
+        image.seek(0)
+        img = MIMEImage(image.read())
+        img.add_header("Content-ID", "<image1>")
+        img.add_header('Content-Disposition', 'inline')
+        msg.attach(img)
+    else:
+        msg.attach(MIMEText(text,"html"))
+        image.seek(0)
+        img = MIMEImage(image.read())
+        img.add_header("Content-ID", "<image1>")
+        img.add_header('Content-Disposition', 'inline')
+        msg.attach(img)
     try:
         with smtplib.SMTP_SSL(config.EMAIL['smtp_server'], config.EMAIL['smtp_port']) as server:
             server.login(config.EMAIL['sender_email'], config.EMAIL["email_key"])
@@ -134,8 +145,7 @@ def generate_spider_chart(name, values, categories, title):
         plt.savefig(img, format='png', dpi=100, bbox_inches='tight')
         img.seek(0)
         plt.close()
-        plot_url = base64.b64encode(img.getvalue()).decode()
-        return plot_url
+        return img
     if TYPE == "pie":
         colors = ['#ff9999', '#66b3ff', '#99ff99', '#ffcc99', '#ff99cc']
 
@@ -157,8 +167,7 @@ def generate_spider_chart(name, values, categories, title):
         plt.savefig(img, format='png', dpi=100, bbox_inches='tight')
         img.seek(0)
         plt.close()
-        plot_url = base64.b64encode(img.getvalue()).decode()
-        return plot_url
+        return img
 
     # Number of variables
     N = len(categories)
@@ -197,9 +206,7 @@ def generate_spider_chart(name, values, categories, title):
     img.seek(0)
     plt.close()
     
-    # Encode to base64 for embedding in HTML
-    plot_url = base64.b64encode(img.getvalue()).decode()
-    return plot_url
+    return img
 
 def get_average_responses_by_role(name, role=None, t_id=None):
     """Calculate average responses, optionally filtered by role"""
@@ -455,7 +462,7 @@ def spider():
     chart_url = generate_spider_chart(name, values, categories, title)
     
     return jsonify({
-        'image': chart_url
+        'image': base64.b64encode(chart_url.getvalue()).decode()
     })
 
 @app.route('/results/')
@@ -479,7 +486,7 @@ def results():
     weights = {CONFIG[name]["categories"][c]:w for c,w in CONFIG[name]["category_weights"].items()} if "category_weights" in CONFIG[name].keys() else {c:1 for c in CONFIG[name]["categories"].values()}
     w_avg = sum(weights.values())/len(weights.values())
     values_adj = [i/weights[c]*w_avg for i,c in zip(values,categories)]
-    chart_url = generate_spider_chart(name, values_adj, categories, title)
+    image = generate_spider_chart(name, values_adj, categories, title)
     
     # Get open answers
     conn = get_db_connection()
@@ -490,7 +497,8 @@ def results():
 
     values_adj = [round(i,1) for i in values_adj]
     
-    text = """Имя: {0}
+    text = """
+Имя: {0}
 Компания: {1}
 Должность: {2}
 Почта: {3}
@@ -499,14 +507,17 @@ def results():
 {4}
 
 Числовые ответы:
-{5}""".format(*session["respondent_contacts"],"\n".join([f"{i.question}: {i.answer}" for i in open_answers]),
+{5}""".format(*session["respondent_contacts"],"\n".join([f"{i["question"]}: {i["answer"]}" for i in open_answers]),
               "\n\n".join(f"{CONFIG[name]["categories"][v['cat']]} - {i}: {v['rate']}" for i,v in answer_dict.items()))
     
-    send_by_email(f"Результаты {CONFIG[name]['name']}: {response['respondent_name']}",text,chart_url)
+    send_by_email(f"Результаты {CONFIG[name]['name']}: {response['respondent_name']} из {response['company']}",text,image)
+    if response["mail"]:
+        with open("templates/email.html","r",encoding="utf-8") as f:
+            send_by_email(f"Результаты {CONFIG[name]['name']}: {response['respondent_name']}",f.read(),image,is_plaintext=False,target=response["mail"])
 
     return render_template('results.html', 
                          score_max=CONFIG[name].get("max_score",10),
-                         chart_url=chart_url,
+                         chart_url=base64.b64encode(image.getvalue()).decode(),
                          respondent_name=response['respondent_name'],
                          role=role_display,
                          categories=categories,
