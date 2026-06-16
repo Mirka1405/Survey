@@ -217,7 +217,7 @@ def get_average_responses_by_role(name, role=None, t_id=None):
         query = f'''SELECT rt.category, AVG(rt.rating) as avg_rating
                    FROM ratings rt
                    LEFT JOIN responses r ON rt.response_id = r.id
-                   WHERE rt.survey_id = ? AND rt.role = ?{' AND r.team_id = ?' if t_id else ''}
+                   WHERE r.survey_id = ? AND rt.role = ?{' AND r.team_id = ?' if t_id else ''}
                    GROUP BY rt.category'''
         params = [name, role]
         if t_id:
@@ -228,7 +228,7 @@ def get_average_responses_by_role(name, role=None, t_id=None):
         query = f'''SELECT rt.category, AVG(rt.rating) as avg_rating
                    FROM ratings rt
                    LEFT JOIN responses r ON rt.response_id = r.id
-                   WHERE rt.survey_id = ?{' AND r.team_id = ?' if t_id else ''}
+                   WHERE r.survey_id = ?{' AND r.team_id = ?' if t_id else ''}
                    GROUP BY rt.category'''
         params = [name]
         if t_id:
