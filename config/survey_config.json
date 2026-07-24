@@ -5,7 +5,7 @@
     "recommendation_text": "<h3>Введите ваши данные, чтобы получить полные результаты и рекомендации:</h3>",
     "chart_title": "{0}\nИндекс максимума команды - {1}/10",
     "chart_categories": "{0} ({1}/10)",
-    "need_team_data": true,
+    "need_team_data": "Manager",
     "roles": {
       "Manager":"Руководитель",
       "Employee":"Сотрудник"

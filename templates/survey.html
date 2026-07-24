@@ -17,7 +17,7 @@
 <form action="{{ url_for('submit') }}{{ append_t_id }}" method="POST">
     <input type="hidden" name="role" value="{{ role }}">
     
-    {% if data.need_team_data %}
+    {% if data.need_team_data=="*" or data.need_team_data==role %}
     <div class="form-group">
         <label for="member_amnt">Укажите количество членов команды:</label>
         <input type="number" id="member_amnt" name="member_amnt" 
@@ -115,34 +115,39 @@
         </div>
     </center>
 
-    <div class="spacing"></div>
-    {% if not data.recommendation_text %}
-    <h3>Оставьте контакты для 30-минутного разбора результатов</h3>
-    <h4 style='margin-top: -20px'>На сессии обсудим ваш профиль по итогам диагностики и дадим рекомендации по следующим шагам.</h4><br>
-    {% else %}
-    {{ data.recommendation_text|safe}}
-    {% endif %}
+    {% if not append_t_id %}
+        <div class="spacing"></div>
+        {% if not data.recommendation_text %}
+        <h3>Оставьте контакты для 30-минутного разбора результатов</h3>
+        <h4 style='margin-top: -20px'>На сессии обсудим ваш профиль по итогам диагностики и дадим рекомендации по следующим шагам.</h4><br>
+        {% else %}
+        {{ data.recommendation_text|safe}}
+        {% endif %}
     
-    <div class="form-group">
-        <label for="respondent_company">* Компания:</label>
-        <input type="text" id="respondent_company" name="respondent_company" 
-                placeholder="Компания" required>
-        <label for="respondent_name">{% if require_name %}*{%endif%} ФИО:</label>
-        <input type="text" id="respondent_name" name="respondent_name" 
-                placeholder="ФИО" {% if require_name %}required{%endif%}>
-        <label for="respondent_job">{% if require_job %}*{%endif%} Должность:</label>
-        <input type="text" id="respondent_job" name="respondent_job" 
-                placeholder="Должность" {% if require_job %}required{%endif%}>
-        <label for="respondent_mail">{% if require_mail %}*{%endif%} E-mail:</label>
-        <input type="email" id="respondent_mail" name="respondent_mail" 
-                placeholder="example@example.org" {% if require_mail %}required{%endif%}>
-    </div>
-    <div class="form-group">
-        <input type="checkbox" id="consent-data" name="consent-data" required>
-        <label for="consent-data" class="label-inline">* Даю <a href={{ url_for('agreement') }}>согласие</a> на обработку моих персональных данных</label>
-    </div>
+    
+        <div class="form-group">
+            <label for="respondent_company">* Компания:</label>
+            <input type="text" id="respondent_company" name="respondent_company" 
+                    placeholder="Компания" required>
+            <label for="respondent_name">{% if require_name %}*{%endif%} ФИО:</label>
+            <input type="text" id="respondent_name" name="respondent_name" 
+                    placeholder="ФИО" {% if require_name %}required{%endif%}>
+            <label for="respondent_job">{% if require_job %}*{%endif%} Должность:</label>
+            <input type="text" id="respondent_job" name="respondent_job" 
+                    placeholder="Должность" {% if require_job %}required{%endif%}>
+            <label for="respondent_mail">{% if require_mail %}*{%endif%} E-mail:</label>
+            <input type="email" id="respondent_mail" name="respondent_mail" 
+                    placeholder="example@example.org" {% if require_mail %}required{%endif%}>
+        </div>
+        <div class="form-group">
+            <input type="checkbox" id="consent-data" name="consent-data" required>
+            <label for="consent-data" class="label-inline">* Даю <a href={{ url_for('agreement') }}>согласие</a> на обработку моих персональных данных</label>
+        </div>
+    {% endif %}
     <button type="submit">Отправить</button>
+    {% if not append_t_id %}
     <h6>* - обязательное поле</h6>
+    {% endif %}
     
     <script>
         function check_filled_required(){
