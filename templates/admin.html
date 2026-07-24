@@ -44,9 +44,11 @@
 <div id="chart-{{ role_id }}" class="chart-container" style="display: none;">
     <h3>{{ role_data.display_name }} - Средние результаты</h3>
     <img src="data:image/png;base64,{{ role_data.chart_url }}" alt="{{ role_data.display_name }} Chart">
+    {% if not deny_detailed_view %}
     <p style="margin-top: 10px;">
         <a href="{{ url_for('role_stats', role=role_id) }}" class="btn btn-small">Рассмотреть детально</a>
     </p>
+    {% endif %}
 </div>
 {% endfor %}
 
