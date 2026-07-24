@@ -218,13 +218,10 @@ def generate_multi_spider_chart(name, datasets, categories, title):
         categories: List of category names
         title: Chart title
     """
-    TITLE_FORMAT = CONFIG[name]["chart_title"]
-    CATEG_FORMAT = CONFIG[name]["chart_categories"]
     TYPE = CONFIG[name].get("chart_type", "spider")
     
     # Define colors for different datasets
-    colors = ['#ff9999', '#66b3ff', '#99ff99', '#ffcc99', '#ff99cc',
-              '#c2c2f0', '#ffb347', '#50c878', '#ff69b4', '#87ceeb']
+    colors = ['#ff9999', "#4427ff", "#9F0087", '#ffb347', "#fff369", "#00aaed"]
     
     # Apply category weights if specified
     datasets_adj = []
@@ -259,7 +256,7 @@ def generate_multi_spider_chart(name, datasets, categories, title):
         ax.set_xticklabels(categories, rotation=20, ha='right', fontsize=14)
         
         ax.set_ylim(CONFIG[name].get("min_score", 0), CONFIG[name].get("max_score", 10))
-        plt.title(TITLE_FORMAT.format(title, ""), size=20, y=1.1)
+        plt.title(title, size=20, y=1.1)
         
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
@@ -274,7 +271,6 @@ def generate_multi_spider_chart(name, datasets, categories, title):
         return img
     
     if TYPE == "pie":
-        # For pie charts, create separate pie charts for each dataset in subplots
         n_datasets = len(datasets_adj)
         n_cols = min(3, n_datasets)
         n_rows = (n_datasets - 1) // n_cols + 1
@@ -301,11 +297,10 @@ def generate_multi_spider_chart(name, datasets, categories, title):
             ax.legend(legends, loc="lower center", bbox_to_anchor=(0.5, -0.3), fontsize=14)
             ax.set_title(dataset_name, size=18, y=1.05)
         
-        # Hide any unused subplots
         for idx in range(n_datasets, len(axes)):
             axes[idx].set_visible(False)
         
-        plt.suptitle(TITLE_FORMAT.format(title, ""), size=24, y=1.02)
+        plt.suptitle(title, size=24, y=1.02)
         plt.tight_layout()
         
         img = BytesIO()
@@ -321,20 +316,31 @@ def generate_multi_spider_chart(name, datasets, categories, title):
     
     fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(projection='polar'))
     
-    # Plot each dataset
     for idx, (dataset_name, values_adj) in enumerate(datasets_adj):
         values = list(values_adj) + values_adj[:1]  # Complete the loop
         color = colors[idx % len(colors)]
         
         ax.plot(angles, values, 'o-', linewidth=2, color=color, label=dataset_name)
         ax.fill(angles, values, alpha=0.1, color=color)
+
+        for angle, value in zip(angles[:-1], values_adj):
+            offset = 0.5
+            text_x = angle
+            text_y = value + offset
+            
+            ax.annotate(f'{value:.1f}', 
+                    xy=(angle, value), 
+                    xytext=(text_x, text_y),
+                    color=color,
+                    fontsize=9,
+                    ha='center',
+                    va='bottom',
+                    fontweight='bold',
+                    bbox=dict(boxstyle='round,pad=0.2', facecolor='grey', alpha=0.7, edgecolor='none'))
     
-    # Set category labels
     category_labels = []
-    for i, cat in enumerate(categories):
-        # Show values for first dataset in labels
-        values_str = ", ".join([f"{vals[i]:.1f}" for _, vals in datasets_adj])
-        category_labels.append(CATEG_FORMAT.format(CONFIG[name]['categories'].get(cat, cat), values_str))
+    for cat in categories:
+        category_labels.append(CONFIG[name]['categories'].get(cat, cat))
     
     ax.set_xticks(angles[:-1])
     ax.set_xticklabels(category_labels, size=10)
@@ -352,8 +358,7 @@ def generate_multi_spider_chart(name, datasets, categories, title):
     
     # Calculate average for all datasets combined and add to title
     all_avgs = [sum(vals)/len(vals) for _, vals in datasets_adj]
-    avg_str = ", ".join([f"{avg:.1f}" for avg in all_avgs])
-    plt.title(TITLE_FORMAT.format(title, avg_str), size=15, y=1.1)
+    plt.title(title, size=15, y=1.1)
     
     img = BytesIO()
     plt.savefig(img, format='png', dpi=100, bbox_inches='tight')
@@ -404,12 +409,14 @@ def get_role_averages_for_chart(name, role=None, t_id=None):
     
     # Get categories for this role or all categories
     if role and role in CONFIG[name]['questions']:
-        categories = [CONFIG[name]['categories'][i] for i in CONFIG[name]['questions'][role].keys()]
+        categories = CONFIG[name]['questions'][role].keys()
     else:
         categories = list(CONFIG[name]['categories'].keys())
     
     # Create values in the same order as categories
     values = [averages.get(cat, 5) for cat in categories]
+
+    categories = [CONFIG[name]['categories'][i] for i in categories]
     
     return categories, values
 
@@ -882,9 +889,9 @@ def group():
         conn = get_db_connection()
         
         # Get all responses for this survey and team
-        responses = conn.execute('''SELECT r.*, 
-                                COUNT(DISTINCT rt.id) as rating_count,
-                                COUNT(DISTINCT oa.id) as open_count
+        responses_rows = conn.execute('''SELECT r.*,
+                                COUNT(DISTINCT oa.id) as open_count,
+                                AVG(rt.rating) as avg_rating
                                 FROM responses r
                                 LEFT JOIN ratings rt ON r.id = rt.response_id
                                 LEFT JOIN open_answers oa ON r.id = oa.response_id
@@ -893,7 +900,20 @@ def group():
                                 ORDER BY r.timestamp DESC''',
                                 (name, t_id)).fetchall()
         
-        session["authorised_response_ids"] = [i["id"] for i in responses]
+        session["authorised_response_ids"] = [i["id"] for i in responses_rows]
+
+        single_open_answers = conn.execute('''SELECT oa.response_id, oa.question, oa.answer 
+                                            FROM open_answers oa
+                                            LEFT JOIN responses r ON r.id = oa.response_id
+                                            WHERE r.survey_id = ? AND r.team_id = ?
+                                            GROUP BY oa.response_id, oa.question, oa.answer
+                                            HAVING COUNT(DISTINCT oa.id) = 1''',
+                                            (name, t_id)).fetchall()
+        ids = {i[0]:i[2] for i in single_open_answers}
+        responses = []
+        for i in responses_rows:
+            responses.append(dict(i))
+            if i["id"] in ids: responses[-1]["open_count"] = ids[i["id"]]
         
         # Get statistics for this survey and team
         stats = conn.execute('''SELECT 
@@ -926,13 +946,10 @@ def group():
                     'values': values
                 }
         
-        # Generate overall average chart
-        # Generate overall average chart with all roles
         all_categories = list(CONFIG[name]['categories'].keys())
         categ_locales = list(CONFIG[name]['categories'].values())
         datasets = []
 
-        # Add overall average
         all_values = []
         for cat in all_categories:
             avg = conn.execute('''SELECT AVG(rt.rating) as avg 
@@ -941,12 +958,13 @@ def group():
                                 WHERE r.survey_id = ? AND rt.category = ? AND r.team_id = ?''',
                             (name, cat, t_id)).fetchone()
             all_values.append(avg['avg'] if avg and avg['avg'] else 5)
-        datasets.append(("Общий результат", all_values))
+        # datasets.append(("Общий результат", all_values))
 
-        # Add averages for each role
         for role in CONFIG[name]['roles'].keys():
             role_categories, role_values = get_role_averages_for_chart(name, role, t_id)
+            print(role_values)
             if role_values:
+                print(role)
                 role_display = CONFIG[name]['roles'][role]
                 datasets.append((role_display, role_values))
 
