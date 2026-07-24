@@ -12,7 +12,7 @@ import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 import numpy as np
-import os
+import random
 from datetime import datetime
 import base64
 from io import BytesIO
@@ -53,7 +53,7 @@ def init_db():
                   respondent_name TEXT,
                   member_cost REAL,
                   member_amnt INTEGER,
-                  team_id INTEGER,
+                  team_id TEXT,
                   mail TEXT,
                   industry TEXT,
                   company TEXT,
@@ -686,6 +686,7 @@ def results():
 @auth.login_required
 def admin():
     """Admin page showing all responses and average charts"""
+    session["authorised_response_ids"] = "*"
     name = session["survey_name"]
     conn = get_db_connection()
     
@@ -766,6 +767,10 @@ def logout():
 @app.route('/response/<int:response_id>')
 def view_response(response_id):
     """View individual response with spider chart"""
+    if not (session["authorised_response_ids"]=="*" or response_id in session["authorised_response_ids"]):
+        flash('Вы не можете смотреть этот id', 'error')
+        return redirect("/")
+
     response, categories, values, name, answer_dict = get_user_responses_for_chart(response_id)
     
     if not response:
@@ -774,6 +779,8 @@ def view_response(response_id):
     
     role_display = CONFIG[name]['roles'].get(response['role'], response['role'])
     title = f"Результаты {response['respondent_name']} - {role_display} ({response['timestamp']})"
+
+    categories = [CONFIG[name]["categories"][c] for c in categories]
     
     chart_url = generate_spider_chart(name, values, categories, title)
     
@@ -793,10 +800,10 @@ def view_response(response_id):
     
     return render_template('view_response.html',
                          response=response,
-                         chart_url=chart_url,
+                         chart_url=base64.b64encode(chart_url.getvalue()).decode(),
                          ratings=ratings,
                          open_answers=open_answers,
-                         role_display=role_display,)
+                         role_display=role_display)
 
 @app.route('/role/<role>')
 def role_stats(role):
@@ -886,6 +893,8 @@ def group():
                                 ORDER BY r.timestamp DESC''',
                                 (name, t_id)).fetchall()
         
+        session["authorised_response_ids"] = [i["id"] for i in responses]
+        
         # Get statistics for this survey and team
         stats = conn.execute('''SELECT 
                             COUNT(DISTINCT r.id) as total_responses,
@@ -959,13 +968,15 @@ def group():
                          deny_detailed_view=True)
 
     conn = get_db_connection()
-    # Get max team_id for this survey only
-    t_id = conn.execute("SELECT MAX(team_id) FROM responses WHERE survey_id = ?", 
-                       (name,)).fetchone()[0]
+    t_id: str | int = conn.execute("SELECT MAX(team_id) FROM responses").fetchone()[0]
     if t_id is None: 
-        t_id = -1
-    link = config.URL_START + url_for("index", t=t_id+1)
-    group_link = config.URL_START + url_for("group", t=t_id+1)
+        t_id = 0
+    elif isinstance(t_id,str) and not t_id.isnumeric():
+        t_id = random.randint(100000,999999)
+    else:
+        t_id+=1
+    link = config.URL_START + url_for("index", t=t_id)
+    group_link = config.URL_START + url_for("group", t=t_id)
     conn.close()
     return render_template('group.html', link=link, group_link=group_link, survey_name=CONFIG[name]['name'])
 
