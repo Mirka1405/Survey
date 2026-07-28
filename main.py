@@ -962,9 +962,7 @@ def group():
 
         for role in CONFIG[name]['roles'].keys():
             role_categories, role_values = get_role_averages_for_chart(name, role, t_id)
-            print(role_values)
             if role_values:
-                print(role)
                 role_display = CONFIG[name]['roles'][role]
                 datasets.append((role_display, role_values))
 
