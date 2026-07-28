@@ -3,3 +3,4 @@ config.py
 admins.json
 __pycache__/
 test.*
+survey_err.txt
