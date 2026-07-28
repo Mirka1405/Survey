@@ -115,7 +115,7 @@ def send_by_email(subject,text,image:BytesIO,is_plaintext=True,target=config.EMA
     except Exception as e:
         print(f"Failed to send email: {e}")
 
-def generate_spider_chart(name, values, categories, title):
+def generate_spider_chart(name, values, categories, title, color_id=0):
     """Generate a spider/radar chart"""
     TITLE_FORMAT = CONFIG[name]["chart_title"]
     CATEG_FORMAT = CONFIG[name]["chart_categories"]
@@ -186,8 +186,9 @@ def generate_spider_chart(name, values, categories, title):
     fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(projection='polar'))
     
     # Draw one line per variable and fill area
-    ax.plot(angles, values, 'o-', linewidth=2, color='blue')
-    ax.fill(angles, values, alpha=0.25, color='blue')
+    colors = ['#ff9999', "#4427ff", "#9F0087", '#ffb347', "#fff369", "#00aaed"]
+    ax.plot(angles, values, 'o-', linewidth=2, color=colors[color_id%len(colors)])
+    ax.fill(angles, values, alpha=0.25, color=colors[color_id%len(colors)])
     
     # Set category labels
     category_labels = [CATEG_FORMAT.format(CONFIG[name]['categories'].get(cat, cat),f"{values[i]:.1f}") for i,cat in enumerate(categories)]
@@ -726,7 +727,7 @@ def admin():
     
     # Generate average charts for each role
     role_charts = {}
-    for role in CONFIG[name]['roles'].keys():
+    for i,role in enumerate(CONFIG[name]['roles'].keys()):
         categories, values = get_role_averages_for_chart(name, role)
         if values:
             role_display = CONFIG[name]['roles'][role]
@@ -734,7 +735,8 @@ def admin():
                 name,
                 values, 
                 categories, 
-                f"Средние результаты - {role_display}"
+                f"Средние результаты - {role_display}",
+                color_id=i
             )
             role_charts[role] = {
                 'display_name': role_display,
@@ -878,16 +880,6 @@ def role_stats(role):
 
 @app.route('/group/<name>/')
 def group_w_name(name):
-    session["survey_name"] = name
-    return redirect(url_for("group",t=request.args.get("t",None)))
-@app.route('/group/')
-def group():
-    """Get a group link"""
-    if "survey_name" not in session:
-        return redirect(url_for("index"))
-    name = session["survey_name"]
-    if not name:
-        return redirect(url_for("index"))
     if (t_id:=request.args.get("t")):
         conn = get_db_connection()
         
@@ -932,7 +924,7 @@ def group():
         
         # Generate average charts for each role
         role_charts = {}
-        for role in CONFIG[name]['roles'].keys():
+        for color_id,role in enumerate(CONFIG[name]['roles'].keys()):
             categories, values = get_role_averages_for_chart(name, role, t_id)
             if values:
                 role_display = CONFIG[name]['roles'][role]
@@ -940,7 +932,8 @@ def group():
                     name,
                     values, 
                     categories, 
-                    f"Средние результаты - {role_display}"
+                    f"Средние результаты - {role_display}",
+                    color_id=color_id
                 )
                 role_charts[role] = {
                     'display_name': role_display,
@@ -978,13 +971,13 @@ def group():
             "Средние результаты по всем ролям"
         )
         return render_template('admin.html', 
-                         responses=responses,
-                         stats=stats,
-                         role_charts=role_charts,
-                         overall_chart=base64.b64encode(overall_chart.getvalue()).decode(),
-                         roles=CONFIG[name]['roles'],
-                         survey_name=CONFIG[name]['name'],
-                         deny_detailed_view=True)
+                            responses=responses,
+                            stats=stats,
+                            role_charts=role_charts,
+                            overall_chart=base64.b64encode(overall_chart.getvalue()).decode(),
+                            roles=CONFIG[name]['roles'],
+                            survey_name=CONFIG[name]['name'],
+                            deny_detailed_view=True)
 
     conn = get_db_connection()
     t_id: str | int = conn.execute("SELECT MAX(team_id) FROM responses").fetchone()[0]
@@ -998,6 +991,11 @@ def group():
     group_link = config.URL_START + url_for("group", t=t_id)
     conn.close()
     return render_template('group.html', link=link, group_link=group_link, survey_name=CONFIG[name]['name'])
+    
+@app.route('/group/')
+def group():
+    """Get a group link"""
+    return redirect(url_for(f"group/{session['survey_name']}",t=request.args.get("t",None)))
 
 init_db()
 
