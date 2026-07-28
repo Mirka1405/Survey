@@ -3,6 +3,9 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import smtplib
 
+import sys
+sys.stderr = open('~/survey_err.txt', 'w')
+
 from flask import Flask, render_template, request, redirect, url_for, flash, session, json, jsonify
 from flask_sslify import SSLify
 from flask_httpauth import HTTPBasicAuth
