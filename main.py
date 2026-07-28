@@ -995,6 +995,7 @@ def group_w_name(name):
 @app.route('/group/')
 def group():
     """Get a group link"""
+    if 'survey_name' not in session: return redirect(url_for("index"))
     return redirect(url_for(f"group/{session['survey_name']}",t=request.args.get("t",None)))
 
 init_db()
